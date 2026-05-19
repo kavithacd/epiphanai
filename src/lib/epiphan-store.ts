@@ -163,7 +163,7 @@ export const useEpiphan = create<State>((set, get) => ({
         ),
       })),
       guardrailEvents: [
-        { id: uid(), ts: Date.now(), rule: "Human Review", outcome: "blocked", detail: `Fix rejected: ${reason}` },
+        { id: uid(), ts: Date.now(), rule: "Human Review", outcome: "blocked" as const, detail: `Fix rejected: ${reason}` },
         ...s.guardrailEvents,
       ].slice(0, 100),
     }));
