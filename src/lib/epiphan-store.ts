@@ -54,13 +54,13 @@ export const useEpiphan = create<State>((set, get) => ({
       scores: emptyScores(), failures: [],
       createdAt: Date.now(),
     };
-    set((s) => ({ audits: [audit, ...s.audits], activeAuditId: id }));
+    set((s): Partial<State> => ({ audits: [audit, ...s.audits], activeAuditId: id }));
 
     // Simulate sequential pillar audit
     const pillarsSeq: PillarId[] = ["P1", "P2", "P3", "P4", "P5"];
     pillarsSeq.forEach((p, pi) => {
       setTimeout(() => {
-        set((s) => ({
+        set((s): Partial<State> => ({
           audits: s.audits.map((a) =>
             a.id === id ? { ...a, currentPillar: p } : a
           ),
@@ -106,7 +106,7 @@ export const useEpiphan = create<State>((set, get) => ({
             } else {
               failure.status = "review_pending";
             }
-            set((s) => ({
+            set((s): Partial<State> => ({
               audits: s.audits.map((a) =>
                 a.id === id
                   ? { ...a, failures: [...a.failures, failure] }
@@ -118,7 +118,7 @@ export const useEpiphan = create<State>((set, get) => ({
         // last pillar — finalize
         if (pi === pillarsSeq.length - 1) {
           setTimeout(() => {
-            set((s) => ({
+            set((s): Partial<State> => ({
               audits: s.audits.map((a) => {
                 if (a.id !== id) return a;
                 const scores = emptyScores();
@@ -139,7 +139,7 @@ export const useEpiphan = create<State>((set, get) => ({
   },
 
   approveFix: (failureId) => {
-    set((s) => ({
+    set((s): Partial<State> => ({
       audits: s.audits.map((a) => ({
         ...a,
         failures: a.failures.map((f) =>
@@ -155,7 +155,7 @@ export const useEpiphan = create<State>((set, get) => ({
   },
 
   rejectFix: (failureId, reason) => {
-    set((s) => ({
+    set((s): Partial<State> => ({
       audits: s.audits.map((a) => ({
         ...a,
         failures: a.failures.map((f) =>
@@ -170,7 +170,7 @@ export const useEpiphan = create<State>((set, get) => ({
   },
 
   editFix: (failureId, newAfter) => {
-    set((s) => ({
+    set((s): Partial<State> => ({
       audits: s.audits.map((a) => ({
         ...a,
         failures: a.failures.map((f) =>
@@ -183,7 +183,7 @@ export const useEpiphan = create<State>((set, get) => ({
   },
 
   rollbackFix: (failureId) => {
-    set((s) => ({
+    set((s): Partial<State> => ({
       audits: s.audits.map((a) => ({
         ...a,
         failures: a.failures.map((f) =>
