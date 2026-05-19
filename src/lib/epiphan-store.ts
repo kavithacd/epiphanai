@@ -32,9 +32,9 @@ interface State {
   getAudit: (id: string) => AuditRecord | undefined;
 }
 
-function logTrace(set: any, get: any, t: Omit<TraceLog, "id" | "timestamp">) {
+function logTrace(set: any, _get: any, t: Omit<TraceLog, "id" | "timestamp">) {
   const trace: TraceLog = { id: uid(), timestamp: Date.now(), ...t };
-  set((s: State) => ({ traces: [trace, ...s.traces].slice(0, 200), totalCostUsd: s.totalCostUsd + t.costUsd }));
+  set((s: State): Partial<State> => ({ traces: [trace, ...s.traces].slice(0, 200), totalCostUsd: s.totalCostUsd + t.costUsd }));
 }
 
 export const useEpiphan = create<State>((set, get) => ({
