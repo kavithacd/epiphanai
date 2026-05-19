@@ -1,0 +1,264 @@
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState, useMemo } from "react";
+import { AppShell } from "@/components/AppShell";
+import { PillarRing, SeverityBadge, PillarBadge } from "@/components/PillarRing";
+import { useEpiphan } from "@/lib/epiphan-store";
+import { PILLARS, PillarId } from "@/lib/epiphan-data";
+import { Play, Plug, Loader2, CheckCircle2, ArrowRight } from "lucide-react";
+
+export const Route = createFileRoute("/dashboard")({
+  head: () => ({ meta: [{ title: "Audit Engine · epiphanAI" }] }),
+  component: Dashboard,
+});
+
+function Dashboard() {
+  const [url, setUrl] = useState("");
+  const { audits, activeAuditId, startAudit } = useEpiphan();
+  const navigate = useNavigate();
+  const active = audits.find((a) => a.id === activeAuditId) ?? audits[0];
+
+  const valid = /(\.myshopify\.com|\.com|\.eu|\.io|\.co)/.test(url);
+
+  function trigger() {
+    if (!valid) return;
+    const id = startAudit(url.startsWith("http") ? url : `https://${url}`);
+    setUrl("");
+    setTimeout(() => navigate({ to: "/dashboard" }), 50);
+    return id;
+  }
+
+  return (
+    <AppShell>
+      <div className="max-w-[1400px] mx-auto p-8 space-y-8">
+        <header>
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Audit Engine</div>
+          <h1 className="text-2xl font-sans font-medium mt-1">Run a sovereign GEO audit</h1>
+          <p className="text-muted-foreground text-xs mt-1">Enter any Shopify domain. P1 → P5 runs sequentially, with local-model classification.</p>
+        </header>
+
+        {/* Trigger panel */}
+        <section className="border border-border rounded-lg bg-surface p-5">
+          <div className="flex flex-col md:flex-row gap-3 items-stretch">
+            <div className="flex-1 flex items-center bg-background border border-border rounded px-3">
+              <span className="text-muted-foreground text-xs mr-2">https://</span>
+              <input
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                placeholder="acme-apparel.myshopify.com"
+                className="flex-1 bg-transparent outline-none py-2.5 text-sm font-mono"
+              />
+            </div>
+            <button className="px-4 py-2.5 rounded border border-border bg-background hover:bg-accent/30 text-xs flex items-center gap-2">
+              <Plug className="w-3.5 h-3.5" /> Connect Shopify
+            </button>
+            <button
+              onClick={trigger}
+              disabled={!valid}
+              className="px-5 py-2.5 rounded bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed text-xs flex items-center gap-2 font-medium"
+            >
+              <Play className="w-3.5 h-3.5" /> Start Audit
+            </button>
+          </div>
+          {!valid && url.length > 0 && (
+            <div className="mt-2 text-[10px] text-sev-high">Domain must match Shopify or top-level domain pattern.</div>
+          )}
+        </section>
+
+        {active && <ActiveAuditView audit={active} />}
+      </div>
+    </AppShell>
+  );
+}
+
+function ActiveAuditView({ audit }: { audit: ReturnType<typeof useEpiphan.getState>["audits"][0] }) {
+  const isRunning = audit.status === "running";
+  const failuresByPillar = useMemo(() => {
+    const m: Record<PillarId, typeof audit.failures> = { P1: [], P2: [], P3: [], P4: [], P5: [] };
+    audit.failures.forEach((f) => m[f.pillar].push(f));
+    return m;
+  }, [audit.failures]);
+
+  const overall = Math.round(
+    (audit.scores.P1 + audit.scores.P2 + audit.scores.P3 + audit.scores.P4 + audit.scores.P5) / 5
+  );
+
+  return (
+    <>
+      {/* Progress strip */}
+      <section className="border border-border rounded-lg bg-surface p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              Audit · <span className="text-foreground">{audit.storeName}</span>
+            </div>
+            <StatusPill status={audit.status} />
+          </div>
+          <div className="text-[10px] text-muted-foreground tabular-nums">
+            {new Date(audit.createdAt).toLocaleString()}
+          </div>
+        </div>
+        <div className="grid grid-cols-5 gap-px bg-border rounded overflow-hidden">
+          {PILLARS.map((p) => {
+            const isCurrent = audit.currentPillar === p.id;
+            const isDone = audit.failures.some((f) => f.pillar === p.id) || (!isCurrent && audit.status === "complete");
+            const color = `var(--color-${p.tokenVar})`;
+            return (
+              <div key={p.id} className="bg-background px-3 py-3 relative overflow-hidden">
+                {isCurrent && isRunning && (
+                  <div className="absolute inset-0 opacity-30" style={{ background: `linear-gradient(90deg, transparent, ${color}, transparent)`, animation: "scan 1.6s linear infinite" }} />
+                )}
+                <div className="relative flex items-center gap-2">
+                  <span className="text-[10px] tabular-nums font-semibold" style={{ color }}>{p.id}</span>
+                  {isCurrent && isRunning ? (
+                    <Loader2 className="w-3 h-3 animate-spin" style={{ color }} />
+                  ) : isDone ? (
+                    <CheckCircle2 className="w-3 h-3" style={{ color }} />
+                  ) : (
+                    <span className="w-1.5 h-1.5 rounded-full bg-muted" />
+                  )}
+                </div>
+                <div className="relative text-[10px] text-muted-foreground mt-1 truncate">{p.name}</div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Mosaic Report */}
+      <section className="grid lg:grid-cols-[1fr_2fr] gap-6">
+        <div className="border border-border rounded-lg bg-surface p-6">
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-4">Overall GEO Score</div>
+          <div className="flex flex-col items-center">
+            <div className="relative w-44 h-44">
+              <svg className="-rotate-90" width={176} height={176}>
+                <circle cx={88} cy={88} r={78} stroke="oklch(0.28 0.03 260)" strokeWidth={10} fill="none" />
+                <circle cx={88} cy={88} r={78}
+                  stroke="var(--color-primary)" strokeWidth={10} fill="none" strokeLinecap="round"
+                  strokeDasharray={2 * Math.PI * 78}
+                  strokeDashoffset={2 * Math.PI * 78 - (overall / 100) * 2 * Math.PI * 78}
+                  style={{ transition: "stroke-dashoffset 700ms ease" }} />
+              </svg>
+              <div className="absolute inset-0 grid place-items-center text-center">
+                <div>
+                  <div className="text-5xl font-medium tabular-nums text-primary">{overall}</div>
+                  <div className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">/ 100</div>
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-4 gap-px bg-border w-full mt-6 rounded overflow-hidden">
+              {(["CRITICAL", "HIGH", "MEDIUM", "LOW"] as const).map((sev) => {
+                const count = audit.failures.filter((f) => f.severity === sev).length;
+                return (
+                  <div key={sev} className="bg-background px-2 py-3 text-center">
+                    <div className="text-lg tabular-nums font-medium" style={{ color: `var(--sev-${sev.toLowerCase()})` }}>{count}</div>
+                    <div className="text-[9px] uppercase tracking-widest text-muted-foreground">{sev}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="border border-border rounded-lg bg-surface p-6">
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-4">Pillar Breakdown</div>
+          <div className="grid grid-cols-5 gap-4">
+            {PILLARS.map((p) => {
+              const count = failuresByPillar[p.id].length;
+              const status = audit.currentPillar === p.id ? "Running" : count > 0 ? "Complete" : audit.status === "complete" ? "Clean" : "Pending";
+              return (
+                <PillarRing
+                  key={p.id}
+                  pillar={p.id}
+                  score={audit.scores[p.id]}
+                  label={`${p.short} · ${count} fail`}
+                  status={status}
+                />
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Live Failure Feed */}
+      <section className="border border-border rounded-lg bg-surface overflow-hidden">
+        <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+            Live Failure Feed · {audit.failures.length} detected
+          </div>
+          {isRunning && (
+            <div className="flex items-center gap-2 text-[10px] text-primary">
+              <Loader2 className="w-3 h-3 animate-spin" /> Polling every 5s
+            </div>
+          )}
+        </div>
+        {audit.failures.length === 0 ? (
+          <div className="p-12 text-center text-muted-foreground text-xs">
+            {isRunning ? "Scanning… failures will appear here as detected." : "No failures detected. Trigger a new audit above."}
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            <div className="grid grid-cols-[60px_70px_90px_1fr_140px_120px] gap-3 px-5 py-2 text-[9px] uppercase tracking-widest text-muted-foreground bg-background/40">
+              <div>Pillar</div><div>ID</div><div>Severity</div><div>Failure</div><div>Fix Status</div><div className="text-right">Model</div>
+            </div>
+            {audit.failures.slice().reverse().map((f) => (
+              <div key={f.id} className="grid grid-cols-[60px_70px_90px_1fr_140px_120px] gap-3 px-5 py-2.5 items-center hover:bg-accent/20">
+                <PillarBadge pillar={f.pillar} />
+                <div className="text-[11px] tabular-nums text-muted-foreground">{f.failureId}</div>
+                <SeverityBadge severity={f.severity} />
+                <div className="text-xs text-foreground truncate" title={f.detail}>{f.failureName}</div>
+                <FixStatusPill status={f.status} />
+                <div className="text-[10px] text-muted-foreground text-right truncate">{f.fix?.generatedBy ?? "—"}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {audit.status === "complete" && (
+        <div className="flex justify-end gap-2">
+          <a href="/review" className="px-4 py-2 rounded border border-border hover:bg-accent/30 text-xs flex items-center gap-2">
+            Open Review Queue <ArrowRight className="w-3 h-3" />
+          </a>
+        </div>
+      )}
+    </>
+  );
+}
+
+function StatusPill({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    running: "var(--color-primary)",
+    complete: "var(--sev-low)",
+    failed: "var(--sev-critical)",
+    pending: "var(--muted-foreground)",
+  };
+  const c = map[status] ?? "var(--muted-foreground)";
+  return (
+    <span className="text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded border tabular-nums"
+      style={{ color: c, borderColor: c + "40", background: c + "10" }}>
+      {status}
+    </span>
+  );
+}
+
+export function FixStatusPill({ status }: { status: string }) {
+  const map: Record<string, { c: string; l: string }> = {
+    detected: { c: "var(--muted-foreground)", l: "Detected" },
+    generating: { c: "var(--color-primary)", l: "Generating" },
+    eval_pending: { c: "var(--sev-medium)", l: "Eval pending" },
+    eval_passed: { c: "var(--sev-low)", l: "Eval passed" },
+    eval_failed: { c: "var(--sev-critical)", l: "Eval failed" },
+    review_pending: { c: "var(--sev-high)", l: "Awaiting review" },
+    approved: { c: "var(--sev-low)", l: "Approved" },
+    deployed: { c: "var(--sev-low)", l: "✓ Healed" },
+    rolled_back: { c: "var(--muted-foreground)", l: "Rolled back" },
+    rejected: { c: "var(--sev-critical)", l: "Rejected" },
+  };
+  const x = map[status] ?? map.detected;
+  return (
+    <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded border tabular-nums w-fit"
+      style={{ color: x.c, borderColor: x.c + "40", background: x.c + "10" }}>
+      {x.l}
+    </span>
+  );
+}
