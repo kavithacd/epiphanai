@@ -124,7 +124,7 @@ export const MODEL_MATRIX = {
   llama33: { name: "Llama 3.3 70B", size: "70B", costPer1k: 0.0, role: "Copywriting & JSON-LD" },
   vision: { name: "Llama 3.2-Vision", size: "11B", costPer1k: 0.0, role: "Multimodal / Alt-text" },
   judge: { name: "Llama 3.3 (Judge)", size: "70B", costPer1k: 0.0, role: "Eval Gate" },
-  openai: { name: "GPT-4o (P5 probes only)", size: "cloud", costPer1k: 0.005, role: "Category probes" },
+  probe: { name: "Llama 3.1 8B (probes)", size: "8B", costPer1k: 0.0, role: "Category probes" },
 } as const;
 
 export function fixTemplateFor(f: Failure): { type: string; model: string; before: string; after: string } {
