@@ -251,7 +251,7 @@ function seedTraces(): TraceLog[] {
     { wf: "WF-09 P2 Schema injection", model: "Llama 3.3 70B" },
     { wf: "WF-12 Eval Gate", model: "Llama 3.3 (Judge)" },
     { wf: "WF-11 P4 Alt-text", model: "Llama 3.2-Vision" },
-    { wf: "WF-06 P5 Probes", model: "GPT-4o (P5 probes only)" },
+    { wf: "WF-06 P5 Probes", model: "Llama 3.1 8B (probes)" },
   ];
   for (let i = 0; i < 14; i++) {
     const w = wfs[i % wfs.length];
@@ -262,7 +262,7 @@ function seedTraces(): TraceLog[] {
       durationMs: 320 + Math.floor(Math.random() * 2200),
       tokensIn: 200 + Math.floor(Math.random() * 1200),
       tokensOut: 60 + Math.floor(Math.random() * 800),
-      costUsd: w.model.startsWith("GPT") ? 0.004 + Math.random() * 0.01 : 0,
+      costUsd: 0,
       status: i === 11 ? "failure" : "success",
     });
   }
