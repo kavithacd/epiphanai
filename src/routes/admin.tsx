@@ -48,7 +48,7 @@ function Admin() {
           </div>
           <div className="grid md:grid-cols-3 gap-px bg-border">
             <GuardCard icon={<Lock />} title="Sovereign Mode" status="ACTIVE"
-              detail="All client product data routed to local Ollama. Zero cloud API calls on PII." />
+              detail="All client data inferred locally. Zero cloud API calls. Zero data leakage." />
             <GuardCard icon={<ShieldAlert />} title="Destructive Op Lock" status="ACTIVE"
               detail="DELETE operations against Shopify API are refused. Additive / replace only." />
             <GuardCard icon={<ShieldCheck />} title="High-Risk Filter" status="ACTIVE"
