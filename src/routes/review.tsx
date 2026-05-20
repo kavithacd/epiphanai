@@ -1,11 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useEpiphan } from "@/lib/epiphan-store";
 import { Failure } from "@/lib/epiphan-data";
 import { PillarBadge, SeverityBadge } from "@/components/PillarRing";
 import { FixStatusPill } from "./dashboard";
-import { Check, X, Pencil, Undo2, ShieldCheck, ChevronRight } from "lucide-react";
+import { Check, X, Pencil, Undo2, ShieldCheck, ChevronRight, ArrowRight, Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/review")({
   head: () => ({ meta: [{ title: "Review Queue · epiphanAI" }] }),
@@ -87,57 +87,76 @@ function ReviewQueue() {
                         </div>
 
                         {f.status === "review_pending" && (
-                          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border">
-                            {editMode ? (
-                              <>
-                                <button
-                                  onClick={() => { editFix(f.id, draft); setEditMode(false); }}
-                                  className="px-3 py-1.5 rounded bg-primary text-primary-foreground text-[11px] flex items-center gap-1.5"
-                                >
-                                  <Check className="w-3 h-3" /> Save edit
-                                </button>
-                                <button onClick={() => setEditMode(false)} className="px-3 py-1.5 rounded border border-border text-[11px]">Cancel</button>
-                              </>
-                            ) : (
-                              <>
-                                <button onClick={() => approveFix(f.id)}
-                                  className="px-3 py-1.5 rounded bg-sev-low text-background text-[11px] flex items-center gap-1.5 font-medium">
-                                  <Check className="w-3 h-3" /> Approve & Deploy
-                                </button>
-                                <button onClick={() => setEditMode(true)}
-                                  className="px-3 py-1.5 rounded border border-sev-medium/50 text-sev-medium hover:bg-sev-medium/10 text-[11px] flex items-center gap-1.5">
-                                  <Pencil className="w-3 h-3" /> Edit
-                                </button>
-                                <select
-                                  value={rejectReason}
-                                  onChange={(e) => setRejectReason(e.target.value)}
-                                  className="text-[11px] bg-background border border-border rounded px-2 py-1.5 outline-none"
-                                >
-                                  <option value="">Reason…</option>
-                                  <option>Factually wrong</option>
-                                  <option>Off-brand</option>
-                                  <option>Not needed</option>
-                                </select>
-                                <button
-                                  disabled={!rejectReason}
-                                  onClick={() => { rejectFix(f.id, rejectReason); setRejectReason(""); }}
-                                  className="px-3 py-1.5 rounded border border-sev-critical/50 text-sev-critical hover:bg-sev-critical/10 text-[11px] flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
-                                  <X className="w-3 h-3" /> Reject
-                                </button>
-                              </>
-                            )}
+                          <div className="space-y-2 pt-2 border-t border-border">
+                            <div className="text-[10px] text-muted-foreground flex items-center gap-1.5">
+                              <Sparkles className="w-3 h-3 text-primary" />
+                              {editMode
+                                ? "Editing the proposed fix. Save your edit, then approve to merge it into the live store."
+                                : "Approving deploys this fix and immediately updates the Live Store Preview on the dashboard."}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              {editMode ? (
+                                <>
+                                  <button
+                                    onClick={() => { editFix(f.id, draft); setEditMode(false); }}
+                                    className="px-3 py-1.5 rounded border border-primary/50 text-primary hover:bg-primary/10 text-[11px] flex items-center gap-1.5"
+                                  >
+                                    <Check className="w-3 h-3" /> Save edit
+                                  </button>
+                                  <button
+                                    onClick={() => { editFix(f.id, draft); approveFix(f.id); setEditMode(false); }}
+                                    className="px-3 py-1.5 rounded bg-sev-low text-background text-[11px] flex items-center gap-1.5 font-medium"
+                                  >
+                                    <Check className="w-3 h-3" /> Save & Approve
+                                  </button>
+                                  <button onClick={() => { setEditMode(false); setDraft(f.fix?.after ?? ""); }} className="px-3 py-1.5 rounded border border-border text-[11px]">Cancel</button>
+                                </>
+                              ) : (
+                                <>
+                                  <button onClick={() => approveFix(f.id)}
+                                    className="px-3 py-1.5 rounded bg-sev-low text-background text-[11px] flex items-center gap-1.5 font-medium">
+                                    <Check className="w-3 h-3" /> Approve & Deploy
+                                  </button>
+                                  <button onClick={() => { setDraft(f.fix?.after ?? ""); setEditMode(true); }}
+                                    className="px-3 py-1.5 rounded border border-sev-medium/50 text-sev-medium hover:bg-sev-medium/10 text-[11px] flex items-center gap-1.5">
+                                    <Pencil className="w-3 h-3" /> Edit
+                                  </button>
+                                  <select
+                                    value={rejectReason}
+                                    onChange={(e) => setRejectReason(e.target.value)}
+                                    className="text-[11px] bg-background border border-border rounded px-2 py-1.5 outline-none"
+                                  >
+                                    <option value="">Reason…</option>
+                                    <option>Factually wrong</option>
+                                    <option>Off-brand</option>
+                                    <option>Not needed</option>
+                                  </select>
+                                  <button
+                                    disabled={!rejectReason}
+                                    onClick={() => { rejectFix(f.id, rejectReason); setRejectReason(""); }}
+                                    className="px-3 py-1.5 rounded border border-sev-critical/50 text-sev-critical hover:bg-sev-critical/10 text-[11px] flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
+                                    <X className="w-3 h-3" /> Reject
+                                  </button>
+                                </>
+                              )}
+                            </div>
                           </div>
                         )}
 
                         {f.status === "deployed" && (
                           <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
                             <div className="text-[10px] text-sev-low flex items-center gap-2">
-                              <ShieldCheck className="w-3 h-3" /> Snapshot retained · 30-day rollback window
+                              <ShieldCheck className="w-3 h-3" /> Merged into store · snapshot retained · 30-day rollback
                             </div>
-                            <button onClick={() => rollbackFix(f.id)}
-                              className="px-3 py-1.5 rounded border border-border hover:bg-accent/30 text-[11px] flex items-center gap-1.5">
-                              <Undo2 className="w-3 h-3" /> One-click rollback
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <Link to="/dashboard" className="px-3 py-1.5 rounded border border-primary/40 text-primary hover:bg-primary/10 text-[11px] flex items-center gap-1.5">
+                                View in Live Store Preview <ArrowRight className="w-3 h-3" />
+                              </Link>
+                              <button onClick={() => rollbackFix(f.id)}
+                                className="px-3 py-1.5 rounded border border-border hover:bg-accent/30 text-[11px] flex items-center gap-1.5">
+                                <Undo2 className="w-3 h-3" /> Rollback
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
