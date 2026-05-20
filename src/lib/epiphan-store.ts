@@ -42,7 +42,7 @@ export const useEpiphan = create<State>((set, get) => ({
   activeAuditId: null,
   traces: seedTraces(),
   guardrailEvents: seedGuardrails(),
-  totalCostUsd: 0.124,
+  totalCostUsd: 0,
 
   getAudit: (id) => get().audits.find((a) => a.id === id),
 
