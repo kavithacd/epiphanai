@@ -103,6 +103,18 @@ export const useEpiphan = create<State>((set, get) => ({
                 durationMs: 400 + Math.floor(Math.random() * 600),
                 tokensIn: 320, tokensOut: 64, costUsd: 0, status: "success",
               });
+              // Auto-deploy fixes that don't require human review
+              if (!c.requiresHuman) {
+                const deployId = failure.id;
+                setTimeout(() => {
+                  set((s2: State): Partial<State> => ({
+                    audits: s2.audits.map((a) => a.id === id ? {
+                      ...a,
+                      failures: a.failures.map((ff) => ff.id === deployId ? { ...ff, status: "deployed" } : ff),
+                    } : a),
+                  }));
+                }, 1200 + Math.floor(Math.random() * 1400));
+              }
             } else {
               failure.status = "review_pending";
             }
