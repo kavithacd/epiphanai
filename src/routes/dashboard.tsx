@@ -3,7 +3,7 @@ import { useState, useMemo } from "react";
 import { AppShell } from "@/components/AppShell";
 import { PillarRing, SeverityBadge, PillarBadge } from "@/components/PillarRing";
 import { useEpiphan } from "@/lib/epiphan-store";
-import { PILLARS, PillarId } from "@/lib/epiphan-data";
+import { PILLARS, PillarId, SEVERITY_WEIGHT, Failure } from "@/lib/epiphan-data";
 import { Play, Plug, Loader2, CheckCircle2, ArrowRight } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard")({
