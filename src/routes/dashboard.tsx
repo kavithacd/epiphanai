@@ -175,13 +175,14 @@ function ActiveAuditView({ audit }: { audit: ReturnType<typeof useEpiphan.getSta
           <div className="grid grid-cols-5 gap-4">
             {PILLARS.map((p) => {
               const count = failuresByPillar[p.id].length;
-              const status = audit.currentPillar === p.id ? "Running" : count > 0 ? "Complete" : audit.status === "complete" ? "Clean" : "Pending";
+              const healed = failuresByPillar[p.id].filter((f) => f.status === "deployed").length;
+              const status = audit.currentPillar === p.id ? "Running" : count > 0 ? `${healed}/${count} healed` : audit.status === "complete" ? "Clean" : "Pending";
               return (
                 <PillarRing
                   key={p.id}
                   pillar={p.id}
-                  score={audit.scores[p.id]}
-                  label={`${p.short} · ${count} fail`}
+                  score={liveScores[p.id]}
+                  label={`${p.short}`}
                   status={status}
                 />
               );
