@@ -135,6 +135,9 @@ function ActiveAuditView({ audit }: { audit: ReturnType<typeof useEpiphan.getSta
         </div>
       </section>
 
+      {/* Live Store Preview — reflects healed state as fixes deploy */}
+      <StorePreview audit={audit} />
+
       {/* Mosaic Report */}
       <section className="grid lg:grid-cols-[1fr_2fr] gap-6">
         <div className="border border-border rounded-lg bg-surface p-6">
