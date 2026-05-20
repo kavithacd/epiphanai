@@ -35,7 +35,7 @@ function Admin() {
           <Kpi icon={<Cpu />} label="Tokens processed" value={totalTokens.toLocaleString()} sub="in+out" />
           <Kpi icon={<ShieldCheck />} label="Eval gate runs" value={evalPass.toString()} sub="0% hallucination" />
           <Kpi icon={<Activity />} label="Avg latency" value={`${avgLatency}ms`} sub="across all models" />
-          <Kpi icon={<Coins />} label="Cost tracker" value={`$${totalCostUsd.toFixed(3)}`} sub="cloud spend (P5 only)" tone="warn" />
+          <Kpi icon={<Coins />} label="Cost tracker" value={`$${totalCostUsd.toFixed(3)}`} sub="100% sovereign · zero cloud spend" />
         </section>
 
         {/* Guardrails */}
@@ -48,7 +48,7 @@ function Admin() {
           </div>
           <div className="grid md:grid-cols-3 gap-px bg-border">
             <GuardCard icon={<Lock />} title="Sovereign Mode" status="ACTIVE"
-              detail="All client product data routed to local Ollama. Zero cloud API calls on PII." />
+              detail="All client data inferred locally. Zero cloud API calls. Zero data leakage." />
             <GuardCard icon={<ShieldAlert />} title="Destructive Op Lock" status="ACTIVE"
               detail="DELETE operations against Shopify API are refused. Additive / replace only." />
             <GuardCard icon={<ShieldCheck />} title="High-Risk Filter" status="ACTIVE"

@@ -42,7 +42,7 @@ export const useEpiphan = create<State>((set, get) => ({
   activeAuditId: null,
   traces: seedTraces(),
   guardrailEvents: seedGuardrails(),
-  totalCostUsd: 0.124,
+  totalCostUsd: 0,
 
   getAudit: (id) => get().audits.find((a) => a.id === id),
 
@@ -103,6 +103,18 @@ export const useEpiphan = create<State>((set, get) => ({
                 durationMs: 400 + Math.floor(Math.random() * 600),
                 tokensIn: 320, tokensOut: 64, costUsd: 0, status: "success",
               });
+              // Auto-deploy fixes that don't require human review
+              if (!c.requiresHuman) {
+                const deployId = failure.id;
+                setTimeout(() => {
+                  set((s2: State): Partial<State> => ({
+                    audits: s2.audits.map((a) => a.id === id ? {
+                      ...a,
+                      failures: a.failures.map((ff) => ff.id === deployId ? { ...ff, status: "deployed" } : ff),
+                    } : a),
+                  }));
+                }, 1200 + Math.floor(Math.random() * 1400));
+              }
             } else {
               failure.status = "review_pending";
             }
@@ -239,7 +251,7 @@ function seedTraces(): TraceLog[] {
     { wf: "WF-09 P2 Schema injection", model: "Llama 3.3 70B" },
     { wf: "WF-12 Eval Gate", model: "Llama 3.3 (Judge)" },
     { wf: "WF-11 P4 Alt-text", model: "Llama 3.2-Vision" },
-    { wf: "WF-06 P5 Probes", model: "GPT-4o (P5 probes only)" },
+    { wf: "WF-06 P5 Probes", model: "Llama 3.1 8B (probes)" },
   ];
   for (let i = 0; i < 14; i++) {
     const w = wfs[i % wfs.length];
@@ -250,7 +262,7 @@ function seedTraces(): TraceLog[] {
       durationMs: 320 + Math.floor(Math.random() * 2200),
       tokensIn: 200 + Math.floor(Math.random() * 1200),
       tokensOut: 60 + Math.floor(Math.random() * 800),
-      costUsd: w.model.startsWith("GPT") ? 0.004 + Math.random() * 0.01 : 0,
+      costUsd: 0,
       status: i === 11 ? "failure" : "success",
     });
   }
@@ -259,7 +271,7 @@ function seedTraces(): TraceLog[] {
 
 function seedGuardrails() {
   return [
-    { id: uid(), ts: Date.now() - 1000 * 60 * 4, rule: "Sovereign Mode", outcome: "allowed" as const, detail: "Routed product copy to local Ollama (Llama 3.3) — no cloud API touched." },
+    { id: uid(), ts: Date.now() - 1000 * 60 * 4, rule: "Sovereign Mode", outcome: "allowed" as const, detail: "Routed product copy to local inference — no cloud API touched." },
     { id: uid(), ts: Date.now() - 1000 * 60 * 11, rule: "Destructive Op Lock", outcome: "blocked" as const, detail: "DELETE on /products/784 refused. Used additive Metafield update instead." },
     { id: uid(), ts: Date.now() - 1000 * 60 * 22, rule: "Eval Gate (Hallucination)", outcome: "blocked" as const, detail: "P3 copy claimed '24h delivery' not in source data. Regenerated automatically." },
     { id: uid(), ts: Date.now() - 1000 * 60 * 38, rule: "High-Risk Filter", outcome: "blocked" as const, detail: "Medical claim 'reduces back pain' stripped from supplement copy." },

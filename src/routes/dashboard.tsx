@@ -3,7 +3,7 @@ import { useState, useMemo } from "react";
 import { AppShell } from "@/components/AppShell";
 import { PillarRing, SeverityBadge, PillarBadge } from "@/components/PillarRing";
 import { useEpiphan } from "@/lib/epiphan-store";
-import { PILLARS, PillarId } from "@/lib/epiphan-data";
+import { PILLARS, PillarId, SEVERITY_WEIGHT } from "@/lib/epiphan-data";
 import { Play, Plug, Loader2, CheckCircle2, ArrowRight } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard")({
@@ -78,8 +78,19 @@ function ActiveAuditView({ audit }: { audit: ReturnType<typeof useEpiphan.getSta
     return m;
   }, [audit.failures]);
 
+  // Live scores — deduct only for failures NOT yet healed (deployed)
+  const liveScores = useMemo(() => {
+    const s: Record<PillarId, number> = { P1: 100, P2: 100, P3: 100, P4: 100, P5: 100 };
+    audit.failures.forEach((f) => {
+      if (f.status !== "deployed" && f.status !== "rolled_back") {
+        s[f.pillar] = Math.max(0, s[f.pillar] - SEVERITY_WEIGHT[f.severity]);
+      }
+    });
+    return s;
+  }, [audit.failures]);
+
   const overall = Math.round(
-    (audit.scores.P1 + audit.scores.P2 + audit.scores.P3 + audit.scores.P4 + audit.scores.P5) / 5
+    (liveScores.P1 + liveScores.P2 + liveScores.P3 + liveScores.P4 + liveScores.P5) / 5
   );
 
   return (
@@ -93,7 +104,7 @@ function ActiveAuditView({ audit }: { audit: ReturnType<typeof useEpiphan.getSta
             </div>
             <StatusPill status={audit.status} />
           </div>
-          <div className="text-[10px] text-muted-foreground tabular-nums">
+          <div suppressHydrationWarning className="text-[10px] text-muted-foreground tabular-nums">
             {new Date(audit.createdAt).toLocaleString()}
           </div>
         </div>
@@ -123,6 +134,9 @@ function ActiveAuditView({ audit }: { audit: ReturnType<typeof useEpiphan.getSta
           })}
         </div>
       </section>
+
+      {/* Live Store Preview — reflects healed state as fixes deploy */}
+      <StorePreview audit={audit} />
 
       {/* Mosaic Report */}
       <section className="grid lg:grid-cols-[1fr_2fr] gap-6">
@@ -164,13 +178,14 @@ function ActiveAuditView({ audit }: { audit: ReturnType<typeof useEpiphan.getSta
           <div className="grid grid-cols-5 gap-4">
             {PILLARS.map((p) => {
               const count = failuresByPillar[p.id].length;
-              const status = audit.currentPillar === p.id ? "Running" : count > 0 ? "Complete" : audit.status === "complete" ? "Clean" : "Pending";
+              const healed = failuresByPillar[p.id].filter((f) => f.status === "deployed").length;
+              const status = audit.currentPillar === p.id ? "Running" : count > 0 ? `${healed}/${count} healed` : audit.status === "complete" ? "Clean" : "Pending";
               return (
                 <PillarRing
                   key={p.id}
                   pillar={p.id}
-                  score={audit.scores[p.id]}
-                  label={`${p.short} · ${count} fail`}
+                  score={liveScores[p.id]}
+                  label={`${p.short}`}
                   status={status}
                 />
               );
@@ -262,3 +277,100 @@ export function FixStatusPill({ status }: { status: string }) {
     </span>
   );
 }
+
+// ─── Live Store Preview ──────────────────────────────────────────────────
+function StorePreview({ audit }: { audit: ReturnType<typeof useEpiphan.getState>["audits"][0] }) {
+  const healed = (id: string) => audit.failures.some((f) => f.failureId === id && f.status === "deployed");
+  const detected = (id: string) => audit.failures.some((f) => f.failureId === id);
+
+  // Simulated metrics that shift as fixes heal
+  const wordCount = healed("F3.1") ? 412 : 32;
+  const altText = healed("F4.1")
+    ? "Charcoal merino wool crew-neck sweater, ribbed collar"
+    : healed("F4.2") ? "Stone cashmere scarf on wooden chair" : "IMG_4521.jpg";
+  const robotsLine = healed("F1.2") ? "User-agent: GPTBot — Allow: /" : "User-agent: GPTBot — Disallow: /";
+  const llmsTxt = healed("F1.1") ? "/llms.txt · deployed" : "/llms.txt · 404 Not Found";
+  const jsonLd = healed("F2.1") ? "Product JSON-LD · valid" : "No Product JSON-LD";
+  const breadcrumb = healed("F2.2") ? "BreadcrumbList · valid positions" : "BreadcrumbList · missing positions";
+  const sov = healed("F5.1") ? "Cited in 6/10 probes" : "Cited in 0/10 probes";
+  const imageFmt = healed("F4.4") ? "merino.webp · 118 KB" : "merino.jpg · 412 KB";
+  const desc = healed("F3.1")
+    ? "100% Italian merino wool sourced in Biella. Best for office layering, smart-casual dinners, and weekend coats. 19.5-micron yarn, breathable, pill-resistant. Pairs with denim, wool trousers, selvedge chinos…"
+    : "Soft merino crew. Made in Italy.";
+
+  const Row = ({ label, value, fixed, present }: { label: string; value: string; fixed: boolean; present: boolean }) => (
+    <div className="grid grid-cols-[120px_1fr_70px] gap-3 items-center px-3 py-2 border-t border-border text-[11px]">
+      <div className="text-muted-foreground uppercase tracking-wider text-[9px]">{label}</div>
+      <div className="font-mono text-foreground truncate" title={value}>{value}</div>
+      <div className="text-right">
+        {!present ? (
+          <span className="text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded border border-border text-muted-foreground">—</span>
+        ) : fixed ? (
+          <span className="text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded border border-sev-low/40 text-sev-low bg-sev-low/10 inline-flex items-center gap-1">
+            <CheckCircle2 className="w-2.5 h-2.5" /> Healed
+          </span>
+        ) : (
+          <span className="text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded border border-sev-critical/40 text-sev-critical bg-sev-critical/10">
+            Issue
+          </span>
+        )}
+      </div>
+    </div>
+  );
+
+  const totalIssues = audit.failures.length;
+  const healedCount = audit.failures.filter((f) => f.status === "deployed").length;
+
+  return (
+    <section className="border border-border rounded-lg bg-surface overflow-hidden">
+      <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+          Live Store Preview · <span className="text-foreground">{audit.storeName}</span>
+        </div>
+        <div className="flex items-center gap-2 text-[10px] tabular-nums">
+          <span className="text-muted-foreground">Healed</span>
+          <span className="text-sev-low font-medium">{healedCount}</span>
+          <span className="text-muted-foreground">/ {totalIssues}</span>
+        </div>
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-px bg-border">
+        {/* Product card mock */}
+        <div className="bg-background p-5">
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Product detail page</div>
+          <div className="border border-border rounded p-4 bg-surface/50">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-sm font-medium text-foreground">Merino Crew Sweater</div>
+              <div className="text-sm tabular-nums text-foreground">€189</div>
+            </div>
+            <div className={`text-[11px] leading-relaxed transition-colors duration-500 ${healed("F3.1") ? "text-foreground" : "text-muted-foreground"}`}>
+              {desc}
+            </div>
+            <div className="mt-3 flex items-center gap-2 text-[10px] text-muted-foreground">
+              <span className={`tabular-nums ${healed("F3.1") ? "text-sev-low" : "text-sev-critical"}`}>{wordCount} words</span>
+              <span>·</span>
+              <span className={healed("F4.4") ? "text-sev-low" : "text-muted-foreground"}>{imageFmt}</span>
+            </div>
+            <div className="mt-3 border-t border-border pt-2 text-[10px]">
+              <span className="text-muted-foreground">alt=</span>
+              <span className={`font-mono ${healed("F4.1") || healed("F4.2") ? "text-sev-low" : "text-sev-critical"}`}>"{altText}"</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Technical signals */}
+        <div className="bg-background">
+          <div className="px-3 pt-5 pb-2 text-[10px] uppercase tracking-widest text-muted-foreground">Technical & structural signals</div>
+          <Row label="robots.txt" value={robotsLine} fixed={healed("F1.2")} present={detected("F1.2")} />
+          <Row label="llms.txt"   value={llmsTxt}    fixed={healed("F1.1")} present={detected("F1.1")} />
+          <Row label="Product schema"    value={jsonLd}     fixed={healed("F2.1")} present={detected("F2.1")} />
+          <Row label="Breadcrumb schema" value={breadcrumb} fixed={healed("F2.2")} present={detected("F2.2")} />
+          <Row label="Canonical tags"    value={healed("F1.5") ? "12 canonicals deployed" : "12 product pages missing canonical"} fixed={healed("F1.5")} present={detected("F1.5")} />
+          <Row label="Share of voice"    value={sov}        fixed={healed("F5.1")} present={detected("F5.1")} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+
