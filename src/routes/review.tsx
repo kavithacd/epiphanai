@@ -1,11 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useEpiphan } from "@/lib/epiphan-store";
 import { Failure } from "@/lib/epiphan-data";
 import { PillarBadge, SeverityBadge } from "@/components/PillarRing";
 import { FixStatusPill } from "./dashboard";
-import { Check, X, Pencil, Undo2, ShieldCheck, ChevronRight } from "lucide-react";
+import { Check, X, Pencil, Undo2, ShieldCheck, ChevronRight, ArrowRight, Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/review")({
   head: () => ({ meta: [{ title: "Review Queue · epiphanAI" }] }),
