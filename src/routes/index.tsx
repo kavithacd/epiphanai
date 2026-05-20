@@ -255,9 +255,9 @@ function Trust() {
     <section id="trust" className="border-b border-border py-20">
       <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-3 gap-px bg-border border border-border">
         <Pillar icon={<Lock />} title="Sovereign by default"
-          body="All client product data is inferred via local Ollama (Phi-4 / Llama 3.3 / Vision). No client PII or copy ever leaves the perimeter." />
+          body="Every audit, generation, and evaluation runs inside your perimeter. No client product data, copy, or imagery ever leaves to a third-party API." />
         <Pillar icon={<ShieldCheck />} title="Eval Gate enforcement"
-          body="Every fix passes a Llama 3.3 judge with binary rubric — Fact Preservation, Schema validity, Object accuracy. Fails are regenerated, never downgraded." />
+          body="Every fix passes a binary rubric — Fact Preservation, Schema validity, Object accuracy. Failures are regenerated, never silently downgraded." />
         <Pillar icon={<Activity />} title="One-click rollback"
           body="Every write to Shopify takes a snapshot. Restore the original state in a single click — 30-day retention on every fix." />
       </div>
