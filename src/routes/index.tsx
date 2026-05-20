@@ -285,7 +285,7 @@ function Footer() {
         <div className="flex items-center gap-4">
           <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded border border-border">
             <span className="w-1.5 h-1.5 rounded-full bg-sev-low animate-pulse" />
-            Local Ollama Inference · zero-data-leakage
+            Sovereign inference · zero data leakage
           </div>
           <div>GDPR · EU AI Act compliant</div>
         </div>
