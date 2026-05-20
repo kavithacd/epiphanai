@@ -35,7 +35,7 @@ function Admin() {
           <Kpi icon={<Cpu />} label="Tokens processed" value={totalTokens.toLocaleString()} sub="in+out" />
           <Kpi icon={<ShieldCheck />} label="Eval gate runs" value={evalPass.toString()} sub="0% hallucination" />
           <Kpi icon={<Activity />} label="Avg latency" value={`${avgLatency}ms`} sub="across all models" />
-          <Kpi icon={<Coins />} label="Cost tracker" value={`$${totalCostUsd.toFixed(3)}`} sub="cloud spend (P5 only)" tone="warn" />
+          <Kpi icon={<Coins />} label="Cost tracker" value={`$${totalCostUsd.toFixed(3)}`} sub="100% sovereign · zero cloud spend" />
         </section>
 
         {/* Guardrails */}
