@@ -271,7 +271,7 @@ function seedTraces(): TraceLog[] {
 
 function seedGuardrails() {
   return [
-    { id: uid(), ts: Date.now() - 1000 * 60 * 4, rule: "Sovereign Mode", outcome: "allowed" as const, detail: "Routed product copy to local Ollama (Llama 3.3) — no cloud API touched." },
+    { id: uid(), ts: Date.now() - 1000 * 60 * 4, rule: "Sovereign Mode", outcome: "allowed" as const, detail: "Routed product copy to local inference — no cloud API touched." },
     { id: uid(), ts: Date.now() - 1000 * 60 * 11, rule: "Destructive Op Lock", outcome: "blocked" as const, detail: "DELETE on /products/784 refused. Used additive Metafield update instead." },
     { id: uid(), ts: Date.now() - 1000 * 60 * 22, rule: "Eval Gate (Hallucination)", outcome: "blocked" as const, detail: "P3 copy claimed '24h delivery' not in source data. Regenerated automatically." },
     { id: uid(), ts: Date.now() - 1000 * 60 * 38, rule: "High-Risk Filter", outcome: "blocked" as const, detail: "Medical claim 'reduces back pain' stripped from supplement copy." },
