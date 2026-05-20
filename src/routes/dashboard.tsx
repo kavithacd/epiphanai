@@ -78,8 +78,19 @@ function ActiveAuditView({ audit }: { audit: ReturnType<typeof useEpiphan.getSta
     return m;
   }, [audit.failures]);
 
+  // Live scores — deduct only for failures NOT yet healed (deployed)
+  const liveScores = useMemo(() => {
+    const s: Record<PillarId, number> = { P1: 100, P2: 100, P3: 100, P4: 100, P5: 100 };
+    audit.failures.forEach((f) => {
+      if (f.status !== "deployed" && f.status !== "rolled_back") {
+        s[f.pillar] = Math.max(0, s[f.pillar] - SEVERITY_WEIGHT[f.severity]);
+      }
+    });
+    return s;
+  }, [audit.failures]);
+
   const overall = Math.round(
-    (audit.scores.P1 + audit.scores.P2 + audit.scores.P3 + audit.scores.P4 + audit.scores.P5) / 5
+    (liveScores.P1 + liveScores.P2 + liveScores.P3 + liveScores.P4 + liveScores.P5) / 5
   );
 
   return (
@@ -93,7 +104,7 @@ function ActiveAuditView({ audit }: { audit: ReturnType<typeof useEpiphan.getSta
             </div>
             <StatusPill status={audit.status} />
           </div>
-          <div className="text-[10px] text-muted-foreground tabular-nums">
+          <div suppressHydrationWarning className="text-[10px] text-muted-foreground tabular-nums">
             {new Date(audit.createdAt).toLocaleString()}
           </div>
         </div>
