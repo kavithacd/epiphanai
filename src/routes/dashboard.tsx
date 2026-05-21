@@ -42,12 +42,15 @@ function Dashboard() {
             <div className="flex-1 flex items-center bg-background border border-border rounded px-3">
               <span className="text-muted-foreground text-xs mr-2">https://</span>
               <input
+                id="epiphan-audit-url"
+                autoFocus
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="acme-apparel.myshopify.com"
                 className="flex-1 bg-transparent outline-none py-2.5 text-sm font-mono"
               />
             </div>
+
             <button className="px-4 py-2.5 rounded border border-border bg-background hover:bg-accent/30 text-xs flex items-center gap-2">
               <Plug className="w-3.5 h-3.5" /> Connect Shopify
             </button>
