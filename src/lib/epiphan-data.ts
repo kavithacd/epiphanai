@@ -326,7 +326,10 @@ Available in Charcoal, Stone, Forest and Ecru. Designed in Stockholm, knitted in
         before: "// Manual review required",
         after: "// Manual review required",
       };
+  }
 }
+
+
 
 // Per-failure human-readable description of what the deployed fix actually changes.
 // Used in toasts, review-queue summaries and history entries — never a generic
