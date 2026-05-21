@@ -145,22 +145,9 @@ function ReviewQueue() {
                           </div>
                         )}
 
-                        {f.status === "deployed" && (
-                          <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
-                            <div className="text-[10px] text-sev-low flex items-center gap-2">
-                              <ShieldCheck className="w-3 h-3" /> Merged into store · snapshot retained · 30-day rollback
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Link to="/dashboard" className="px-3 py-1.5 rounded border border-primary/40 text-primary hover:bg-primary/10 text-[11px] flex items-center gap-1.5">
-                                View in Live Store Preview <ArrowRight className="w-3 h-3" />
-                              </Link>
-                              <button onClick={() => rollbackFix(f.id)}
-                                className="px-3 py-1.5 rounded border border-border hover:bg-accent/30 text-[11px] flex items-center gap-1.5">
-                                <Undo2 className="w-3 h-3" /> Rollback
-                              </button>
-                            </div>
-                          </div>
-                        )}
+                      </div>
+                    )}
+
                       </div>
                     )}
                   </div>
