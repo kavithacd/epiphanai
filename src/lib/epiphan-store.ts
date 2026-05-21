@@ -159,12 +159,15 @@ export const useEpiphan = create<State>((set, get) => ({
   },
 
   approveFix: (failureId) => {
+    let target: Failure | undefined;
     set((s): Partial<State> => ({
       audits: s.audits.map((a) => ({
         ...a,
-        failures: a.failures.map((f) =>
-          f.id === failureId ? { ...f, status: "deployed" } : f
-        ),
+        failures: a.failures.map((f) => {
+          if (f.id !== failureId) return f;
+          target = f;
+          return { ...f, status: "deployed" };
+        }),
       })),
     }));
     logTrace(set, get, {
@@ -172,7 +175,27 @@ export const useEpiphan = create<State>((set, get) => ({
       promptHash: hash(), operator: "consultant@tessera.eu",
       durationMs: 820, tokensIn: 0, tokensOut: 0, costUsd: 0, status: "success",
     });
+    if (target) {
+      const d = describeFix(target);
+      toast.success(d.title, { description: d.detail });
+    }
   },
+
+  autoFix: (failureId) => {
+    get().approveFix(failureId);
+  },
+
+  clearAll: () => {
+    set({
+      audits: [],
+      activeAuditId: null,
+      traces: [],
+      guardrailEvents: [],
+      totalCostUsd: 0,
+    });
+    toast.success("History cleared", { description: "All audits, traces and guardrail events have been wiped." });
+  },
+
 
   rejectFix: (failureId, reason) => {
     set((s): Partial<State> => ({
