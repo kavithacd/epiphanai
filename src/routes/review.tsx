@@ -67,9 +67,21 @@ function ReviewQueue() {
                       <ChevronRight className={`w-3.5 h-3.5 text-muted-foreground transition ${open ? "rotate-90" : ""}`} />
                     </button>
 
-                    {open && f.fix && (
+                    {open && f.fix && (() => {
+                      const d = describeFix(f);
+                      return (
                       <div className="bg-background border-t border-border p-5 space-y-4">
+                        <div className="border border-primary/30 bg-primary/5 rounded p-3 flex gap-3 items-start">
+                          <Wand2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                          <div>
+                            <div className="text-xs text-primary font-medium">{d.title}</div>
+                            <div className="text-[11px] text-muted-foreground mt-0.5">{d.detail}</div>
+                          </div>
+                        </div>
+
                         <EvalStrip fix={f.fix} />
+
+
 
                         <div className="grid md:grid-cols-2 gap-3">
                           <Pane label="CURRENT STATE" tone="bad">
