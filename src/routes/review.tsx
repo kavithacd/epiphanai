@@ -14,7 +14,7 @@ export const Route = createFileRoute("/review")({
 });
 
 function ReviewQueue() {
-  const { audits, approveFix, rejectFix, editFix, rollbackFix } = useEpiphan();
+  const { audits, approveFix, rejectFix, editFix } = useEpiphan();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [draft, setDraft] = useState("");
