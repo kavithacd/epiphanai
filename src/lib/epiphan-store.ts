@@ -1,8 +1,10 @@
 import { create } from "zustand";
+import { toast } from "sonner";
 import {
   AuditRecord, Failure, Fix, FAILURE_CATALOG, fixTemplateFor, PILLARS,
-  PillarId, SEVERITY_WEIGHT, TraceLog, MODEL_MATRIX,
+  PillarId, SEVERITY_WEIGHT, TraceLog, MODEL_MATRIX, describeFix,
 } from "./epiphan-data";
+
 
 const uid = () => Math.random().toString(36).slice(2, 11);
 const hash = () => "0x" + Math.random().toString(16).slice(2, 10);
@@ -30,7 +32,10 @@ interface State {
   editFix: (failureId: string, newAfter: string) => void;
   rollbackFix: (failureId: string) => void;
   getAudit: (id: string) => AuditRecord | undefined;
+  clearAll: () => void;
+  autoFix: (failureId: string) => void;
 }
+
 
 function logTrace(set: any, _get: any, t: Omit<TraceLog, "id" | "timestamp">) {
   const trace: TraceLog = { id: uid(), timestamp: Date.now(), ...t };
@@ -113,8 +118,11 @@ export const useEpiphan = create<State>((set, get) => ({
                       failures: a.failures.map((ff) => ff.id === deployId ? { ...ff, status: "deployed" } : ff),
                     } : a),
                   }));
+                  const d = describeFix(failure);
+                  toast.success(d.title, { description: d.detail });
                 }, 1200 + Math.floor(Math.random() * 1400));
               }
+
             } else {
               failure.status = "review_pending";
             }
@@ -151,12 +159,15 @@ export const useEpiphan = create<State>((set, get) => ({
   },
 
   approveFix: (failureId) => {
+    let target: Failure | undefined;
     set((s): Partial<State> => ({
       audits: s.audits.map((a) => ({
         ...a,
-        failures: a.failures.map((f) =>
-          f.id === failureId ? { ...f, status: "deployed" } : f
-        ),
+        failures: a.failures.map((f) => {
+          if (f.id !== failureId) return f;
+          target = f;
+          return { ...f, status: "deployed" };
+        }),
       })),
     }));
     logTrace(set, get, {
@@ -164,7 +175,27 @@ export const useEpiphan = create<State>((set, get) => ({
       promptHash: hash(), operator: "consultant@tessera.eu",
       durationMs: 820, tokensIn: 0, tokensOut: 0, costUsd: 0, status: "success",
     });
+    if (target) {
+      const d = describeFix(target);
+      toast.success(d.title, { description: d.detail });
+    }
   },
+
+  autoFix: (failureId) => {
+    get().approveFix(failureId);
+  },
+
+  clearAll: () => {
+    set({
+      audits: [],
+      activeAuditId: null,
+      traces: [],
+      guardrailEvents: [],
+      totalCostUsd: 0,
+    });
+    toast.success("History cleared", { description: "All audits, traces and guardrail events have been wiped." });
+  },
+
 
   rejectFix: (failureId, reason) => {
     set((s): Partial<State> => ({
@@ -179,7 +210,9 @@ export const useEpiphan = create<State>((set, get) => ({
         ...s.guardrailEvents,
       ].slice(0, 100),
     }));
+    toast.error("Fix rejected", { description: reason });
   },
+
 
   editFix: (failureId, newAfter) => {
     set((s): Partial<State> => ({
@@ -208,7 +241,9 @@ export const useEpiphan = create<State>((set, get) => ({
       promptHash: hash(), operator: "consultant@tessera.eu",
       durationMs: 410, tokensIn: 0, tokensOut: 0, costUsd: 0, status: "success",
     });
+    toast.message("Rolled back", { description: "Pre-deploy snapshot restored on the live store." });
   },
+
 }));
 
 // ──────────────────────────────── seed data ────────────────────────────────

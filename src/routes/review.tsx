@@ -1,11 +1,12 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useEpiphan } from "@/lib/epiphan-store";
-import { Failure } from "@/lib/epiphan-data";
+import { Failure, describeFix } from "@/lib/epiphan-data";
 import { PillarBadge, SeverityBadge } from "@/components/PillarRing";
 import { FixStatusPill } from "./dashboard";
-import { Check, X, Pencil, Undo2, ShieldCheck, ChevronRight, ArrowRight, Sparkles } from "lucide-react";
+import { Check, X, Pencil, ChevronRight, Sparkles, Wand2 } from "lucide-react";
+
 
 export const Route = createFileRoute("/review")({
   head: () => ({ meta: [{ title: "Review Queue · epiphanAI" }] }),
@@ -13,14 +14,14 @@ export const Route = createFileRoute("/review")({
 });
 
 function ReviewQueue() {
-  const { audits, approveFix, rejectFix, editFix, rollbackFix } = useEpiphan();
+  const { audits, approveFix, rejectFix, editFix } = useEpiphan();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [draft, setDraft] = useState("");
   const [rejectReason, setRejectReason] = useState("");
 
   const items = audits.flatMap((a) =>
-    a.failures.filter((f) => ["review_pending", "deployed", "rejected", "rolled_back"].includes(f.status))
+    a.failures.filter((f) => f.status === "review_pending")
       .map((f) => ({ ...f, storeName: a.storeName }))
   );
 
@@ -29,11 +30,12 @@ function ReviewQueue() {
       <div className="max-w-[1400px] mx-auto p-8 space-y-6">
         <header>
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Review Queue</div>
-          <h1 className="text-2xl font-sans font-medium mt-1">Approve, edit, or reject AI-proposed fixes</h1>
+          <h1 className="text-2xl font-sans font-medium mt-1">Manual review · {items.length} fix{items.length === 1 ? "" : "es"} awaiting approval</h1>
           <p className="text-muted-foreground text-xs mt-1">
-            P3 copy and P4 alt-text fixes always require human approval before deployment.
+            Only fixes that require human judgement (P3 copy, P4 alt-text, brand-sensitive content) appear here. Auto-approved fixes deploy directly and live in <a className="text-primary hover:underline" href="/history">Audit History</a>.
           </p>
         </header>
+
 
         <div className="border border-border rounded-lg bg-surface overflow-hidden">
           {items.length === 0 ? (
@@ -65,9 +67,21 @@ function ReviewQueue() {
                       <ChevronRight className={`w-3.5 h-3.5 text-muted-foreground transition ${open ? "rotate-90" : ""}`} />
                     </button>
 
-                    {open && f.fix && (
+                    {open && f.fix && (() => {
+                      const d = describeFix(f);
+                      return (
                       <div className="bg-background border-t border-border p-5 space-y-4">
+                        <div className="border border-primary/30 bg-primary/5 rounded p-3 flex gap-3 items-start">
+                          <Wand2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                          <div>
+                            <div className="text-xs text-primary font-medium">{d.title}</div>
+                            <div className="text-[11px] text-muted-foreground mt-0.5">{d.detail}</div>
+                          </div>
+                        </div>
+
                         <EvalStrip fix={f.fix} />
+
+
 
                         <div className="grid md:grid-cols-2 gap-3">
                           <Pane label="CURRENT STATE" tone="bad">
@@ -143,24 +157,11 @@ function ReviewQueue() {
                           </div>
                         )}
 
-                        {f.status === "deployed" && (
-                          <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
-                            <div className="text-[10px] text-sev-low flex items-center gap-2">
-                              <ShieldCheck className="w-3 h-3" /> Merged into store · snapshot retained · 30-day rollback
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Link to="/dashboard" className="px-3 py-1.5 rounded border border-primary/40 text-primary hover:bg-primary/10 text-[11px] flex items-center gap-1.5">
-                                View in Live Store Preview <ArrowRight className="w-3 h-3" />
-                              </Link>
-                              <button onClick={() => rollbackFix(f.id)}
-                                className="px-3 py-1.5 rounded border border-border hover:bg-accent/30 text-[11px] flex items-center gap-1.5">
-                                <Undo2 className="w-3 h-3" /> Rollback
-                              </button>
-                            </div>
-                          </div>
-                        )}
                       </div>
-                    )}
+                      );
+                    })()}
+
+
                   </div>
                 );
               })}
