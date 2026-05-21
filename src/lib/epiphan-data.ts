@@ -326,5 +326,32 @@ Available in Charcoal, Stone, Forest and Ecru. Designed in Stockholm, knitted in
         before: "// Manual review required",
         after: "// Manual review required",
       };
+}
+
+// Per-failure human-readable description of what the deployed fix actually changes.
+// Used in toasts, review-queue summaries and history entries — never a generic
+// "Schema fix deployed" message.
+export function describeFix(f: Pick<Failure, "failureId" | "failureName" | "pillar">): {
+  title: string;
+  detail: string;
+} {
+  switch (f.failureId) {
+    case "F1.1": return { title: "llms.txt manifest published", detail: "Created /llms.txt with 10 prioritized URLs (homepage, collections, policies)." };
+    case "F1.2": return { title: "robots.txt opened to AI crawlers", detail: "Allowed GPTBot, OAI-SearchBot, PerplexityBot and ClaudeBot. Previous Disallow rule snapshot stored." };
+    case "F1.5": return { title: "Canonical tags injected", detail: "Added rel=canonical to 12 product pages, consolidating duplicate URL variants." };
+    case "F2.1": return { title: "Product JSON-LD deployed", detail: "Injected schema.org/Product markup (name, sku, price, brand, offers, aggregateRating) on 47 product pages." };
+    case "F2.2": return { title: "BreadcrumbList repaired", detail: "Added required position fields (1→Home, 2→Knitwear, 3→Product) and absolute item URLs." };
+    case "F2.3": return { title: "Organization schema added", detail: "Published Organization JSON-LD with logo and sameAs links to Instagram and LinkedIn." };
+    case "F2.4": return { title: "Malformed JSON-LD rewritten", detail: "Repaired 3 unparseable Product blocks (trailing commas, missing offer wrappers)." };
+    case "F3.1": return { title: "Product description expanded", detail: "Rewrote thin copy from 8 to 412 words — added materials, use-cases, care, and FAQ block." };
+    case "F3.2": return { title: "FAQPage schema deployed", detail: "Added structured Q&A covering sizing, material itch, and EU shipping." };
+    case "F3.3": return { title: "Scenario language added", detail: "Inserted 'best for…' use-cases and competitor comparisons into product copy." };
+    case "F4.1": return { title: "Alt-text generated for 184 images", detail: "Vision model wrote descriptive alt text — colour, material, garment type, setting." };
+    case "F4.2": return { title: "Generic filename alts replaced", detail: "Replaced 47 'IMG_*.jpg' alt strings with descriptive text from vision model." };
+    case "F4.4": return { title: "Images converted to WebP", detail: "All product imagery re-encoded to WebP — average 71% size reduction (412KB → 118KB)." };
+    case "F5.1":
+    case "F5.2": return { title: "SoV remediation plan queued", detail: "Probe results stored; outreach + content roadmap drafted for human review." };
+    default: return { title: `${f.failureName} resolved`, detail: "Fix deployed to the live store." };
   }
 }
+
