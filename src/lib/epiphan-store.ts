@@ -210,7 +210,9 @@ export const useEpiphan = create<State>((set, get) => ({
         ...s.guardrailEvents,
       ].slice(0, 100),
     }));
+    toast.error("Fix rejected", { description: reason });
   },
+
 
   editFix: (failureId, newAfter) => {
     set((s): Partial<State> => ({
