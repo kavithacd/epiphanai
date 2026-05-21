@@ -32,7 +32,10 @@ interface State {
   editFix: (failureId: string, newAfter: string) => void;
   rollbackFix: (failureId: string) => void;
   getAudit: (id: string) => AuditRecord | undefined;
+  clearAll: () => void;
+  autoFix: (failureId: string) => void;
 }
+
 
 function logTrace(set: any, _get: any, t: Omit<TraceLog, "id" | "timestamp">) {
   const trace: TraceLog = { id: uid(), timestamp: Date.now(), ...t };
