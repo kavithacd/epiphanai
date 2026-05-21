@@ -158,7 +158,9 @@ function ReviewQueue() {
                         )}
 
                       </div>
-                    )}
+                      );
+                    })()}
+
 
                   </div>
                 );
