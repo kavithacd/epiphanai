@@ -241,7 +241,9 @@ export const useEpiphan = create<State>((set, get) => ({
       promptHash: hash(), operator: "consultant@tessera.eu",
       durationMs: 410, tokensIn: 0, tokensOut: 0, costUsd: 0, status: "success",
     });
+    toast.message("Rolled back", { description: "Pre-deploy snapshot restored on the live store." });
   },
+
 }));
 
 // ──────────────────────────────── seed data ────────────────────────────────
