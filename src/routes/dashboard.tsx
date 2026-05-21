@@ -215,19 +215,13 @@ function ActiveAuditView({ audit }: { audit: ReturnType<typeof useEpiphan.getSta
           </div>
         ) : (
           <div className="divide-y divide-border">
-            <div className="grid grid-cols-[60px_70px_90px_1fr_140px_120px] gap-3 px-5 py-2 text-[9px] uppercase tracking-widest text-muted-foreground bg-background/40">
-              <div>Pillar</div><div>ID</div><div>Severity</div><div>Failure</div><div>Fix Status</div><div className="text-right">Model</div>
+            <div className="grid grid-cols-[60px_70px_90px_1fr_140px_120px_90px] gap-3 px-5 py-2 text-[9px] uppercase tracking-widest text-muted-foreground bg-background/40">
+              <div>Pillar</div><div>ID</div><div>Severity</div><div>Failure</div><div>Fix Status</div><div>Model</div><div className="text-right">Action</div>
             </div>
             {audit.failures.slice().reverse().map((f) => (
-              <div key={f.id} className="grid grid-cols-[60px_70px_90px_1fr_140px_120px] gap-3 px-5 py-2.5 items-center hover:bg-accent/20">
-                <PillarBadge pillar={f.pillar} />
-                <div className="text-[11px] tabular-nums text-muted-foreground">{f.failureId}</div>
-                <SeverityBadge severity={f.severity} />
-                <div className="text-xs text-foreground truncate" title={f.detail}>{f.failureName}</div>
-                <FixStatusPill status={f.status} />
-                <div className="text-[10px] text-muted-foreground text-right truncate">{f.fix?.generatedBy ?? "—"}</div>
-              </div>
+              <FailureRow key={f.id} f={f} />
             ))}
+
           </div>
         )}
       </section>
