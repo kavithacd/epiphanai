@@ -371,4 +371,56 @@ function StorePreview({ audit }: { audit: ReturnType<typeof useEpiphan.getState>
   );
 }
 
+function FailureRow({ f }: { f: Failure }) {
+  const autoFix = useEpiphan((s) => s.autoFix);
+  const [open, setOpen] = useState(false);
+  const canAutoFix = f.fix && (f.status === "eval_passed" || f.status === "detected");
+  const isPending = f.status === "review_pending";
+  return (
+    <div className="border-b border-border last:border-b-0">
+      <div className="grid grid-cols-[60px_70px_90px_1fr_140px_120px_90px] gap-3 px-5 py-2.5 items-center hover:bg-accent/20">
+        <PillarBadge pillar={f.pillar} />
+        <div className="text-[11px] tabular-nums text-muted-foreground">{f.failureId}</div>
+        <SeverityBadge severity={f.severity} />
+        <div className="text-xs text-foreground truncate" title={f.detail}>{f.failureName}</div>
+        <FixStatusPill status={f.status} />
+        <div className="text-[10px] text-muted-foreground truncate">{f.fix?.generatedBy ?? "—"}</div>
+        <div className="text-right flex justify-end gap-1">
+          {f.fix && (
+            <button onClick={() => setOpen((o) => !o)}
+              className="px-1.5 py-1 rounded border border-border hover:bg-accent/30 text-[10px] flex items-center gap-1"
+              title="Preview before / after">
+              <Eye className="w-3 h-3" />
+            </button>
+          )}
+          {canAutoFix && (
+            <button onClick={() => autoFix(f.id)}
+              className="px-2 py-1 rounded border border-primary/40 text-primary hover:bg-primary/10 text-[10px] flex items-center gap-1">
+              <Zap className="w-3 h-3" /> Auto-fix
+            </button>
+          )}
+          {isPending && (
+            <a href="/review" className="px-2 py-1 rounded border border-sev-high/40 text-sev-high hover:bg-sev-high/10 text-[10px]">
+              Review
+            </a>
+          )}
+        </div>
+      </div>
+      {open && f.fix && (
+        <div className="grid md:grid-cols-2 gap-2 px-5 pb-3 bg-background/40">
+          <div className="border border-sev-critical/30 rounded overflow-hidden">
+            <div className="px-2 py-1 text-[9px] uppercase tracking-widest text-sev-critical bg-sev-critical/10 border-b border-sev-critical/30">Before</div>
+            <pre className="text-[10px] p-2 whitespace-pre-wrap max-h-44 overflow-auto text-muted-foreground">{f.fix.before}</pre>
+          </div>
+          <div className="border border-sev-low/30 rounded overflow-hidden">
+            <div className="px-2 py-1 text-[9px] uppercase tracking-widest text-sev-low bg-sev-low/10 border-b border-sev-low/30">After (AI fix)</div>
+            <pre className="text-[10px] p-2 whitespace-pre-wrap max-h-44 overflow-auto text-foreground">{f.fix.after}</pre>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 
