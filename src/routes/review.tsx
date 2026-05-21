@@ -148,8 +148,6 @@ function ReviewQueue() {
                       </div>
                     )}
 
-                      </div>
-                    )}
                   </div>
                 );
               })}
