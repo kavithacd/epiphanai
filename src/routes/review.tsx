@@ -20,7 +20,7 @@ function ReviewQueue() {
   const [rejectReason, setRejectReason] = useState("");
 
   const items = audits.flatMap((a) =>
-    a.failures.filter((f) => ["review_pending", "deployed", "rejected", "rolled_back"].includes(f.status))
+    a.failures.filter((f) => f.status === "review_pending")
       .map((f) => ({ ...f, storeName: a.storeName }))
   );
 
@@ -29,11 +29,12 @@ function ReviewQueue() {
       <div className="max-w-[1400px] mx-auto p-8 space-y-6">
         <header>
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Review Queue</div>
-          <h1 className="text-2xl font-sans font-medium mt-1">Approve, edit, or reject AI-proposed fixes</h1>
+          <h1 className="text-2xl font-sans font-medium mt-1">Manual review · {items.length} fix{items.length === 1 ? "" : "es"} awaiting approval</h1>
           <p className="text-muted-foreground text-xs mt-1">
-            P3 copy and P4 alt-text fixes always require human approval before deployment.
+            Only fixes that require human judgement (P3 copy, P4 alt-text, brand-sensitive content) appear here. Auto-approved fixes deploy directly and live in <a className="text-primary hover:underline" href="/history">Audit History</a>.
           </p>
         </header>
+
 
         <div className="border border-border rounded-lg bg-surface overflow-hidden">
           {items.length === 0 ? (
