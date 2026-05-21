@@ -118,8 +118,11 @@ export const useEpiphan = create<State>((set, get) => ({
                       failures: a.failures.map((ff) => ff.id === deployId ? { ...ff, status: "deployed" } : ff),
                     } : a),
                   }));
+                  const d = describeFix(failure);
+                  toast.success(d.title, { description: d.detail });
                 }, 1200 + Math.floor(Math.random() * 1400));
               }
+
             } else {
               failure.status = "review_pending";
             }
