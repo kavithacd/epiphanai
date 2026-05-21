@@ -1,5 +1,5 @@
-import { Link, useLocation } from "@tanstack/react-router";
-import { Activity, Inbox, History, Shield, Settings as Cog, Cpu, Sparkles } from "lucide-react";
+import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { Activity, Inbox, History, Shield, Settings as Cog, Cpu, Sparkles, Plus } from "lucide-react";
 import { useEpiphan } from "@/lib/epiphan-store";
 
 const NAV = [
@@ -12,6 +12,7 @@ const NAV = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const loc = useLocation();
+  const navigate = useNavigate();
   const audits = useEpiphan((s) => s.audits);
   const pendingReview = audits
     .flatMap((a) => a.failures)
@@ -67,7 +68,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </aside>
-      <main className="flex-1 min-w-0 overflow-x-hidden">{children}</main>
+      <main className="flex-1 min-w-0 overflow-x-hidden flex flex-col">
+        <header className="h-12 border-b border-border bg-surface/60 backdrop-blur flex items-center justify-between px-6 shrink-0">
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+            {NAV.find((n) => loc.pathname.startsWith(n.to))?.label ?? "epiphanAI"}
+          </div>
+          <button
+            onClick={() => navigate({ to: "/dashboard", search: { new: 1 } as never })}
+            className="px-3 py-1.5 rounded bg-primary text-primary-foreground hover:opacity-90 text-[11px] flex items-center gap-1.5 font-medium"
+          >
+            <Plus className="w-3 h-3" /> New audit
+          </button>
+        </header>
+        <div className="flex-1 min-w-0">{children}</div>
+      </main>
     </div>
   );
 }
+
