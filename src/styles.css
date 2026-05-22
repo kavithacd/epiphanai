@@ -44,62 +44,60 @@
 }
 
 :root {
-  --radius: 0.375rem;
-  /* Dark only — sovereign tool */
-  --background: oklch(0.12 0.015 270);          /* #0A0A0F */
-  --foreground: oklch(0.98 0.005 250);          /* #F8FAFC */
-  --surface: oklch(0.18 0.025 265);             /* #111827 */
-  --surface-elevated: oklch(0.22 0.028 265);
-  --card: oklch(0.18 0.025 265);
-  --card-foreground: oklch(0.98 0.005 250);
-  --popover: oklch(0.18 0.025 265);
-  --popover-foreground: oklch(0.98 0.005 250);
-  --primary: oklch(0.82 0.16 195);              /* electric cyan */
-  --primary-foreground: oklch(0.12 0.015 270);
-  --secondary: oklch(0.25 0.025 265);
-  --secondary-foreground: oklch(0.98 0.005 250);
-  --muted: oklch(0.22 0.022 265);
-  --muted-foreground: oklch(0.62 0.025 260);    /* #64748B */
-  --accent: oklch(0.28 0.05 265);
-  --accent-foreground: oklch(0.98 0.005 250);
-  --destructive: oklch(0.62 0.22 25);
-  --destructive-foreground: oklch(0.98 0.005 250);
-  --border: oklch(0.28 0.03 260);               /* #1E293B */
-  --input: oklch(0.22 0.025 265);
-  --ring: oklch(0.82 0.16 195);
+  --radius: 0.5rem;
+  /* Light, product-app palette — Gong / HubSpot / Mailchimp inspired */
+  --background: oklch(0.99 0.003 250);          /* near-white */
+  --foreground: oklch(0.22 0.03 260);           /* deep slate */
+  --surface: oklch(0.985 0.004 250);            /* card white */
+  --surface-elevated: oklch(1 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.03 260);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.22 0.03 260);
+  --primary: oklch(0.55 0.13 215);              /* trustworthy teal-blue */
+  --primary-foreground: oklch(0.99 0.003 250);
+  --secondary: oklch(0.96 0.006 250);
+  --secondary-foreground: oklch(0.28 0.03 260);
+  --muted: oklch(0.965 0.005 250);
+  --muted-foreground: oklch(0.5 0.02 255);
+  --accent: oklch(0.95 0.012 220);
+  --accent-foreground: oklch(0.28 0.03 260);
+  --destructive: oklch(0.6 0.2 25);
+  --destructive-foreground: oklch(0.99 0.003 250);
+  --border: oklch(0.92 0.008 255);
+  --input: oklch(0.95 0.006 250);
+  --ring: oklch(0.6 0.13 215);
 
-  /* Pillar colors */
-  --p1: oklch(0.78 0.16 220);   /* #00D4FF cyan */
-  --p2: oklch(0.72 0.16 295);   /* #A78BFA violet */
-  --p3: oklch(0.78 0.15 165);   /* #34D399 emerald */
-  --p4: oklch(0.72 0.17 55);    /* #FB923C orange */
-  --p5: oklch(0.75 0.18 350);   /* #F472B6 pink */
+  /* Pillar colors — softened for light bg */
+  --p1: oklch(0.6 0.14 220);    /* blue */
+  --p2: oklch(0.58 0.16 295);   /* violet */
+  --p3: oklch(0.6 0.14 165);    /* emerald */
+  --p4: oklch(0.65 0.16 55);    /* orange */
+  --p5: oklch(0.62 0.17 350);   /* pink */
 
   /* Severity */
-  --sev-critical: oklch(0.65 0.24 25);
-  --sev-high: oklch(0.74 0.18 55);
-  --sev-medium: oklch(0.85 0.16 90);
-  --sev-low: oklch(0.74 0.17 155);
+  --sev-critical: oklch(0.58 0.22 25);
+  --sev-high: oklch(0.68 0.17 55);
+  --sev-medium: oklch(0.78 0.15 90);
+  --sev-low: oklch(0.62 0.15 155);
 }
-
-.dark { color-scheme: dark; }
 
 @layer base {
   html, body { background: var(--background); color: var(--foreground); }
-  html { color-scheme: dark; font-family: var(--font-sans); }
+  html { color-scheme: light; font-family: var(--font-sans); }
   body { font-feature-settings: "ss01", "cv11"; }
   * { border-color: var(--border); }
   .font-mono { font-family: var(--font-mono); }
   .grid-bg {
     background-image:
-      linear-gradient(to right, oklch(0.22 0.025 265 / 0.4) 1px, transparent 1px),
-      linear-gradient(to bottom, oklch(0.22 0.025 265 / 0.4) 1px, transparent 1px);
+      linear-gradient(to right, oklch(0.9 0.008 255 / 0.6) 1px, transparent 1px),
+      linear-gradient(to bottom, oklch(0.9 0.008 255 / 0.6) 1px, transparent 1px);
     background-size: 32px 32px;
   }
   .scanline::after {
     content: "";
     position: absolute; inset: 0;
-    background: linear-gradient(180deg, transparent, oklch(0.82 0.16 195 / 0.04), transparent);
+    background: linear-gradient(180deg, transparent, oklch(0.6 0.13 215 / 0.05), transparent);
     pointer-events: none;
     animation: scan 3s linear infinite;
   }
@@ -116,3 +114,4 @@
     50% { box-shadow: 0 0 0 8px transparent; }
   }
 }
+
