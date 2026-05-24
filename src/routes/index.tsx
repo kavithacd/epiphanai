@@ -279,7 +279,7 @@ function Footer() {
   return (
     <footer className="py-10 text-xs text-muted-foreground">
       <div className="max-w-7xl mx-auto px-6 flex flex-wrap gap-4 items-center justify-between">
-        <div>© 2026 Tessera Advisory · epiphanAI v1.0</div>
+        <div>© 2026 Tessera · epiphanAI v1.0</div>
         <div className="flex items-center gap-4">
           <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded border border-border">
             <span className="w-1.5 h-1.5 rounded-full bg-sev-low animate-pulse" />
