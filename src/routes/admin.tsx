@@ -25,7 +25,7 @@ function Admin() {
             <h1 className="text-2xl font-sans font-medium mt-1">Trace, evals & guardrails</h1>
           </div>
           <div className="text-[10px] text-muted-foreground">
-            Tessera Advisory · operator@tessera.eu
+            Tessera · operator@tessera.eu
           </div>
         </header>
 

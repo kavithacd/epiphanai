@@ -28,7 +28,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <div>
             <div className="text-foreground font-semibold tracking-tight">epiphanAI</div>
-            <div className="text-[10px] text-muted-foreground uppercase tracking-widest">Tessera Advisory</div>
+            <div className="text-[10px] text-muted-foreground uppercase tracking-widest">Tessera</div>
           </div>
         </Link>
         <nav className="flex-1 p-2 space-y-0.5">

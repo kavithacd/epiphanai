@@ -38,13 +38,11 @@ function TopNav() {
           </div>
           <div className="font-semibold tracking-tight">epiphanAI</div>
           <div className="text-[9px] text-muted-foreground uppercase tracking-widest border-l border-border pl-2 ml-1">
-            Tessera Advisory
+            Tessera
           </div>
         </Link>
         <nav className="hidden md:flex items-center gap-6 text-xs text-muted-foreground">
           <a href="#pillars" className="hover:text-foreground">Taxonomy</a>
-          <a href="#remediation" className="hover:text-foreground">Remediation</a>
-          <a href="#trust" className="hover:text-foreground">Trust & Stack</a>
           <Link to="/dashboard" className="px-3 py-1.5 rounded bg-primary text-primary-foreground hover:opacity-90 inline-flex items-center gap-1.5 text-xs">
             Open Console <ArrowRight className="w-3 h-3" />
           </Link>
@@ -281,7 +279,7 @@ function Footer() {
   return (
     <footer className="py-10 text-xs text-muted-foreground">
       <div className="max-w-7xl mx-auto px-6 flex flex-wrap gap-4 items-center justify-between">
-        <div>© 2026 Tessera Advisory · epiphanAI v1.0</div>
+        <div>© 2026 Tessera · epiphanAI v1.0</div>
         <div className="flex items-center gap-4">
           <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded border border-border">
             <span className="w-1.5 h-1.5 rounded-full bg-sev-low animate-pulse" />
