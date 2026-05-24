@@ -44,7 +44,7 @@ function TopNav() {
         <nav className="hidden md:flex items-center gap-6 text-xs text-muted-foreground">
           <a href="#pillars" className="hover:text-foreground">Taxonomy</a>
           <a href="#remediation" className="hover:text-foreground">Remediation</a>
-          <a href="#trust" className="hover:text-foreground">Sovereign Stack</a>
+          <a href="#trust" className="hover:text-foreground">Trust & Stack</a>
           <Link to="/dashboard" className="px-3 py-1.5 rounded bg-primary text-primary-foreground hover:opacity-90 inline-flex items-center gap-1.5 text-xs">
             Open Console <ArrowRight className="w-3 h-3" />
           </Link>
