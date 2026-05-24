@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ReviewRouteImport } from './routes/review'
+import { Route as ImpactRouteImport } from './routes/impact'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -24,6 +25,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const ReviewRoute = ReviewRouteImport.update({
   id: '/review',
   path: '/review',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ImpactRoute = ImpactRouteImport.update({
+  id: '/impact',
+  path: '/impact',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HistoryRoute = HistoryRouteImport.update({
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/dashboard': typeof DashboardRoute
   '/history': typeof HistoryRoute
+  '/impact': typeof ImpactRoute
   '/review': typeof ReviewRoute
   '/settings': typeof SettingsRoute
 }
@@ -60,6 +67,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/dashboard': typeof DashboardRoute
   '/history': typeof HistoryRoute
+  '/impact': typeof ImpactRoute
   '/review': typeof ReviewRoute
   '/settings': typeof SettingsRoute
 }
@@ -69,6 +77,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/dashboard': typeof DashboardRoute
   '/history': typeof HistoryRoute
+  '/impact': typeof ImpactRoute
   '/review': typeof ReviewRoute
   '/settings': typeof SettingsRoute
 }
@@ -79,16 +88,25 @@ export interface FileRouteTypes {
     | '/admin'
     | '/dashboard'
     | '/history'
+    | '/impact'
     | '/review'
     | '/settings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/dashboard' | '/history' | '/review' | '/settings'
+  to:
+    | '/'
+    | '/admin'
+    | '/dashboard'
+    | '/history'
+    | '/impact'
+    | '/review'
+    | '/settings'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/dashboard'
     | '/history'
+    | '/impact'
     | '/review'
     | '/settings'
   fileRoutesById: FileRoutesById
@@ -98,6 +116,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   DashboardRoute: typeof DashboardRoute
   HistoryRoute: typeof HistoryRoute
+  ImpactRoute: typeof ImpactRoute
   ReviewRoute: typeof ReviewRoute
   SettingsRoute: typeof SettingsRoute
 }
@@ -116,6 +135,13 @@ declare module '@tanstack/react-router' {
       path: '/review'
       fullPath: '/review'
       preLoaderRoute: typeof ReviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/impact': {
+      id: '/impact'
+      path: '/impact'
+      fullPath: '/impact'
+      preLoaderRoute: typeof ImpactRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/history': {
@@ -154,6 +180,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   DashboardRoute: DashboardRoute,
   HistoryRoute: HistoryRoute,
+  ImpactRoute: ImpactRoute,
   ReviewRoute: ReviewRoute,
   SettingsRoute: SettingsRoute,
 }
