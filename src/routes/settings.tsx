@@ -125,7 +125,7 @@ function Settings() {
             <li>• External API access limited to WF-06 (P5 sentiment probes, category-level only).</li>
             <li>• All writes preceded by a rollback snapshot stored in Supabase.</li>
             <li>• Audit trail retention: 90 days · Eval gate outputs: indefinitely.</li>
-            <li>• GDPR data controller: Tessera Advisory · EU AI Act risk class: limited.</li>
+            <li>• GDPR data controller: Tessera · EU AI Act risk class: limited.</li>
           </ul>
         </section>
       </div>
