@@ -2,9 +2,13 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
 import { AppShell } from "@/components/AppShell";
 import { PillarRing, SeverityBadge, PillarBadge } from "@/components/PillarRing";
+import { DiffPane } from "@/components/DiffPane";
 import { useEpiphan } from "@/lib/epiphan-store";
 import { PILLARS, PillarId, SEVERITY_WEIGHT, Failure } from "@/lib/epiphan-data";
-import { Play, Plug, Loader2, CheckCircle2, ArrowRight, Zap, Eye } from "lucide-react";
+import { toCsv, toJson, downloadFile, copyToClipboard, toWebhookPayload } from "@/lib/epiphan-export";
+import { Play, Plug, Loader2, CheckCircle2, ArrowRight, Zap, Eye, FileText, FileJson, Copy, Check } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
+import { toast } from "sonner";
 
 
 export const Route = createFileRoute("/dashboard")({
@@ -33,33 +37,23 @@ function Dashboard() {
       <div className="max-w-[1400px] mx-auto p-8 space-y-8">
         <header>
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Audit Engine</div>
-          <h1 className="text-2xl font-sans font-medium mt-1">Run a sovereign GEO audit</h1>
+          <h1 className="text-2xl font-sans font-medium mt-1">Run a GEO audit</h1>
           <p className="text-muted-foreground text-xs mt-1">Enter any Shopify domain. P1 → P5 runs sequentially, with local-model classification.</p>
         </header>
 
-        {/* Trigger panel */}
         <section className="border border-border rounded-lg bg-surface p-5">
           <div className="flex flex-col md:flex-row gap-3 items-stretch">
             <div className="flex-1 flex items-center bg-background border border-border rounded px-3">
               <span className="text-muted-foreground text-xs mr-2">https://</span>
-              <input
-                id="epiphan-audit-url"
-                autoFocus
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
+              <input id="epiphan-audit-url" autoFocus value={url} onChange={(e) => setUrl(e.target.value)}
                 placeholder="acme-apparel.myshopify.com"
-                className="flex-1 bg-transparent outline-none py-2.5 text-sm font-mono"
-              />
+                className="flex-1 bg-transparent outline-none py-2.5 text-sm font-mono" />
             </div>
-
             <button className="px-4 py-2.5 rounded border border-border bg-background hover:bg-accent/30 text-xs flex items-center gap-2">
               <Plug className="w-3.5 h-3.5" /> Connect Shopify
             </button>
-            <button
-              onClick={trigger}
-              disabled={!valid}
-              className="px-5 py-2.5 rounded bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed text-xs flex items-center gap-2 font-medium"
-            >
+            <button onClick={trigger} disabled={!valid}
+              className="px-5 py-2.5 rounded bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed text-xs flex items-center gap-2 font-medium">
               <Play className="w-3.5 h-3.5" /> Start Audit
             </button>
           </div>
@@ -76,13 +70,13 @@ function Dashboard() {
 
 function ActiveAuditView({ audit }: { audit: ReturnType<typeof useEpiphan.getState>["audits"][0] }) {
   const isRunning = audit.status === "running";
+  const fixHistory = useEpiphan((s) => s.fixHistory).filter((h) => h.auditId === audit.id);
   const failuresByPillar = useMemo(() => {
     const m: Record<PillarId, typeof audit.failures> = { P1: [], P2: [], P3: [], P4: [], P5: [] };
     audit.failures.forEach((f) => m[f.pillar].push(f));
     return m;
   }, [audit.failures]);
 
-  // Live scores — deduct only for failures NOT yet healed (deployed)
   const liveScores = useMemo(() => {
     const s: Record<PillarId, number> = { P1: 100, P2: 100, P3: 100, P4: 100, P5: 100 };
     audit.failures.forEach((f) => {
@@ -93,13 +87,10 @@ function ActiveAuditView({ audit }: { audit: ReturnType<typeof useEpiphan.getSta
     return s;
   }, [audit.failures]);
 
-  const overall = Math.round(
-    (liveScores.P1 + liveScores.P2 + liveScores.P3 + liveScores.P4 + liveScores.P5) / 5
-  );
+  const overall = Math.round((liveScores.P1 + liveScores.P2 + liveScores.P3 + liveScores.P4 + liveScores.P5) / 5);
 
   return (
     <>
-      {/* Progress strip */}
       <section className="border border-border rounded-lg bg-surface p-5">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
@@ -124,13 +115,9 @@ function ActiveAuditView({ audit }: { audit: ReturnType<typeof useEpiphan.getSta
                 )}
                 <div className="relative flex items-center gap-2">
                   <span className="text-[10px] tabular-nums font-semibold" style={{ color }}>{p.id}</span>
-                  {isCurrent && isRunning ? (
-                    <Loader2 className="w-3 h-3 animate-spin" style={{ color }} />
-                  ) : isDone ? (
-                    <CheckCircle2 className="w-3 h-3" style={{ color }} />
-                  ) : (
-                    <span className="w-1.5 h-1.5 rounded-full bg-muted" />
-                  )}
+                  {isCurrent && isRunning ? <Loader2 className="w-3 h-3 animate-spin" style={{ color }} />
+                    : isDone ? <CheckCircle2 className="w-3 h-3" style={{ color }} />
+                    : <span className="w-1.5 h-1.5 rounded-full bg-muted" />}
                 </div>
                 <div className="relative text-[10px] text-muted-foreground mt-1 truncate">{p.name}</div>
               </div>
@@ -139,17 +126,15 @@ function ActiveAuditView({ audit }: { audit: ReturnType<typeof useEpiphan.getSta
         </div>
       </section>
 
-      {/* Live Store Preview — reflects healed state as fixes deploy */}
       <StorePreview audit={audit} />
 
-      {/* Mosaic Report */}
       <section className="grid lg:grid-cols-[1fr_2fr] gap-6">
         <div className="border border-border rounded-lg bg-surface p-6">
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-4">Overall GEO Score</div>
           <div className="flex flex-col items-center">
             <div className="relative w-44 h-44">
               <svg className="-rotate-90" width={176} height={176}>
-                <circle cx={88} cy={88} r={78} stroke="oklch(0.28 0.03 260)" strokeWidth={10} fill="none" />
+                <circle cx={88} cy={88} r={78} stroke="var(--border)" strokeWidth={10} fill="none" />
                 <circle cx={88} cy={88} r={78}
                   stroke="var(--color-primary)" strokeWidth={10} fill="none" strokeLinecap="round"
                   strokeDasharray={2 * Math.PI * 78}
@@ -185,50 +170,23 @@ function ActiveAuditView({ audit }: { audit: ReturnType<typeof useEpiphan.getSta
               const healed = failuresByPillar[p.id].filter((f) => f.status === "deployed").length;
               const status = audit.currentPillar === p.id ? "Running" : count > 0 ? `${healed}/${count} healed` : audit.status === "complete" ? "Clean" : "Pending";
               return (
-                <PillarRing
-                  key={p.id}
-                  pillar={p.id}
-                  score={liveScores[p.id]}
-                  label={`${p.short}`}
-                  status={status}
-                />
+                <PillarRing key={p.id} pillar={p.id} score={liveScores[p.id]} label={p.short} status={status} />
               );
             })}
           </div>
         </div>
       </section>
 
-      {/* Live Failure Feed */}
-      <section className="border border-border rounded-lg bg-surface overflow-hidden">
-        <div className="px-5 py-3 border-b border-border flex items-center justify-between">
-          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-            Live Failure Feed · {audit.failures.length} detected
-          </div>
-          {isRunning && (
-            <div className="flex items-center gap-2 text-[10px] text-primary">
-              <Loader2 className="w-3 h-3 animate-spin" /> Polling every 5s
-            </div>
-          )}
-        </div>
-        {audit.failures.length === 0 ? (
-          <div className="p-12 text-center text-muted-foreground text-xs">
-            {isRunning ? "Scanning… failures will appear here as detected." : "No failures detected. Trigger a new audit above."}
-          </div>
-        ) : (
-          <div className="divide-y divide-border">
-            <div className="grid grid-cols-[60px_70px_90px_1fr_140px_120px_90px] gap-3 px-5 py-2 text-[9px] uppercase tracking-widest text-muted-foreground bg-background/40">
-              <div>Pillar</div><div>ID</div><div>Severity</div><div>Failure</div><div>Fix Status</div><div>Model</div><div className="text-right">Action</div>
-            </div>
-            {audit.failures.slice().reverse().map((f) => (
-              <FailureRow key={f.id} f={f} />
-            ))}
+      {/* NEW — score trend chart */}
+      <ScoreTrend audit={audit} history={fixHistory} liveScores={liveScores} />
 
-          </div>
-        )}
-      </section>
+      <FeedSection audit={audit} isRunning={isRunning} />
 
       {audit.status === "complete" && (
         <div className="flex justify-end gap-2">
+          <a href="/impact" className="px-4 py-2 rounded border border-border hover:bg-accent/30 text-xs flex items-center gap-2">
+            See Fix Impact <ArrowRight className="w-3 h-3" />
+          </a>
           <a href="/review" className="px-4 py-2 rounded border border-border hover:bg-accent/30 text-xs flex items-center gap-2">
             Open Review Queue <ArrowRight className="w-3 h-3" />
           </a>
@@ -238,12 +196,157 @@ function ActiveAuditView({ audit }: { audit: ReturnType<typeof useEpiphan.getSta
   );
 }
 
+// ─── Score Trend chart ───────────────────────────────────────────────────
+function ScoreTrend({
+  audit, history, liveScores,
+}: {
+  audit: ReturnType<typeof useEpiphan.getState>["audits"][0];
+  history: ReturnType<typeof useEpiphan.getState>["fixHistory"];
+  liveScores: Record<PillarId, number>;
+}) {
+  const ordered = [...history].filter((h) => h.auditId === audit.id).reverse();
+  const points: { t: string; P1: number; P2: number; P3: number; P4: number; P5: number }[] = [];
+  if (ordered.length > 0) {
+    points.push({ t: "start", ...ordered[0].scoresBefore });
+    ordered.forEach((h, i) => points.push({ t: `fix ${i + 1}`, ...h.scoresAfter }));
+  } else {
+    points.push({ t: "start", ...liveScores }, { t: "now", ...liveScores });
+  }
+
+  return (
+    <section className="border border-border rounded-lg bg-surface overflow-hidden">
+      <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+          Score Trend · P1–P5 over fix deployments
+        </div>
+        <div className="text-[10px] text-muted-foreground">{ordered.length} deployment{ordered.length === 1 ? "" : "s"} recorded</div>
+      </div>
+      <div className="p-4 h-[220px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={points} margin={{ top: 10, right: 16, bottom: 0, left: -10 }}>
+            <CartesianGrid stroke="var(--border)" vertical={false} />
+            <XAxis dataKey="t" stroke="var(--muted-foreground)" tick={{ fontSize: 10 }} />
+            <YAxis domain={[0, 100]} stroke="var(--muted-foreground)" tick={{ fontSize: 10 }} />
+            <Tooltip
+              contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 6, fontSize: 11 }}
+              labelStyle={{ color: "var(--muted-foreground)" }}
+            />
+            <Legend iconSize={8} wrapperStyle={{ fontSize: 10 }} />
+            {PILLARS.map((p) => (
+              <Line key={p.id} type="monotone" dataKey={p.id}
+                stroke={`var(--color-${p.tokenVar})`} strokeWidth={2}
+                dot={{ r: 2 }} activeDot={{ r: 4 }} />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </section>
+  );
+}
+
+// ─── Failure feed with bulk select ───────────────────────────────────────
+function FeedSection({
+  audit, isRunning,
+}: {
+  audit: ReturnType<typeof useEpiphan.getState>["audits"][0];
+  isRunning: boolean;
+}) {
+  const bulkAutoFix = useEpiphan((s) => s.bulkAutoFix);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  const selectable = audit.failures.filter((f) => f.fix && (f.status === "eval_passed" || f.status === "detected" || f.status === "review_pending"));
+  const toggle = (id: string) => {
+    const n = new Set(selected); n.has(id) ? n.delete(id) : n.add(id); setSelected(n);
+  };
+  const selectAll = () => setSelected(new Set(selectable.map((f) => f.id)));
+  const selectNonCritical = () => setSelected(new Set(selectable.filter((f) => f.severity !== "CRITICAL").map((f) => f.id)));
+  const clear = () => setSelected(new Set());
+
+  const exportCsv = () => {
+    downloadFile(`epiphan-${audit.storeName}-${Date.now()}.csv`, "text/csv", toCsv(audit.failures));
+    toast.success("CSV exported", { description: `${audit.failures.length} failures.` });
+  };
+  const exportJson = () => {
+    downloadFile(`epiphan-${audit.storeName}-${Date.now()}.json`, "application/json", toJson(audit.failures));
+    toast.success("JSON exported", { description: `${audit.failures.length} failures.` });
+  };
+  const copyPayload = async () => {
+    await copyToClipboard(JSON.stringify(toWebhookPayload(audit.failures), null, 2));
+    toast.success("Webhook payload copied");
+  };
+
+  return (
+    <section className="border border-border rounded-lg bg-surface overflow-hidden">
+      <div className="px-5 py-3 border-b border-border flex items-center justify-between gap-3 flex-wrap">
+        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+          Live Failure Feed · {audit.failures.length} detected
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {isRunning && (
+            <div className="flex items-center gap-2 text-[10px] text-primary">
+              <Loader2 className="w-3 h-3 animate-spin" /> Polling every 5s
+            </div>
+          )}
+          <button onClick={exportCsv} className="text-[10px] px-2 py-1 rounded border border-border hover:bg-accent/30 flex items-center gap-1">
+            <FileText className="w-3 h-3" /> CSV
+          </button>
+          <button onClick={exportJson} className="text-[10px] px-2 py-1 rounded border border-border hover:bg-accent/30 flex items-center gap-1">
+            <FileJson className="w-3 h-3" /> JSON
+          </button>
+          <button onClick={copyPayload} className="text-[10px] px-2 py-1 rounded border border-border hover:bg-accent/30 flex items-center gap-1">
+            <Copy className="w-3 h-3" /> Webhook
+          </button>
+        </div>
+      </div>
+
+      {selectable.length > 0 && (
+        <div className="px-5 py-2 border-b border-border bg-background/40 flex flex-wrap items-center gap-2">
+          <button onClick={selectAll} className="text-[10px] px-2 py-1 rounded border border-border hover:bg-accent/30">
+            All fixable ({selectable.length})
+          </button>
+          <button onClick={selectNonCritical} className="text-[10px] px-2 py-1 rounded border border-border hover:bg-accent/30">
+            Non-critical only
+          </button>
+          {selected.size > 0 && (
+            <button onClick={clear} className="text-[10px] px-2 py-1 rounded border border-border hover:bg-accent/30 text-muted-foreground">
+              Clear
+            </button>
+          )}
+          <div className="ml-auto">
+            <button onClick={() => { bulkAutoFix(Array.from(selected)); clear(); }}
+              disabled={selected.size === 0}
+              className="text-[10px] px-3 py-1.5 rounded bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed font-medium flex items-center gap-1.5">
+              <Check className="w-3 h-3" /> Apply All ({selected.size})
+            </button>
+          </div>
+        </div>
+      )}
+
+      {audit.failures.length === 0 ? (
+        <div className="p-12 text-center text-muted-foreground text-xs">
+          {isRunning ? "Scanning… failures will appear here as detected." : "No failures detected."}
+        </div>
+      ) : (
+        <div className="divide-y divide-border">
+          <div className="grid grid-cols-[28px_60px_70px_90px_1fr_140px_120px_90px] gap-3 px-5 py-2 text-[9px] uppercase tracking-widest text-muted-foreground bg-background/40">
+            <div></div><div>Pillar</div><div>ID</div><div>Severity</div><div>Failure</div><div>Fix Status</div><div>Model</div><div className="text-right">Action</div>
+          </div>
+          {audit.failures.slice().reverse().map((f) => (
+            <FailureRow key={f.id} f={f}
+              checked={selected.has(f.id)}
+              onCheck={() => toggle(f.id)}
+              selectable={!!f.fix && (f.status === "eval_passed" || f.status === "detected" || f.status === "review_pending")} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function StatusPill({ status }: { status: string }) {
   const map: Record<string, string> = {
-    running: "var(--color-primary)",
-    complete: "var(--sev-low)",
-    failed: "var(--sev-critical)",
-    pending: "var(--muted-foreground)",
+    running: "var(--color-primary)", complete: "var(--sev-low)",
+    failed: "var(--sev-critical)", pending: "var(--muted-foreground)",
   };
   const c = map[status] ?? "var(--muted-foreground)";
   return (
@@ -281,10 +384,8 @@ function StorePreview({ audit }: { audit: ReturnType<typeof useEpiphan.getState>
   const healed = (id: string) => audit.failures.some((f) => f.failureId === id && f.status === "deployed");
   const detected = (id: string) => audit.failures.some((f) => f.failureId === id);
 
-  // Simulated metrics that shift as fixes heal
   const wordCount = healed("F3.1") ? 412 : 32;
-  const altText = healed("F4.1")
-    ? "Charcoal merino wool crew-neck sweater, ribbed collar"
+  const altText = healed("F4.1") ? "Charcoal merino wool crew-neck sweater, ribbed collar"
     : healed("F4.2") ? "Stone cashmere scarf on wooden chair" : "IMG_4521.jpg";
   const robotsLine = healed("F1.2") ? "User-agent: GPTBot — Allow: /" : "User-agent: GPTBot — Disallow: /";
   const llmsTxt = healed("F1.1") ? "/llms.txt · deployed" : "/llms.txt · 404 Not Found";
@@ -333,7 +434,6 @@ function StorePreview({ audit }: { audit: ReturnType<typeof useEpiphan.getState>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-px bg-border">
-        {/* Product card mock */}
         <div className="bg-background p-5">
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Product detail page</div>
           <div className="border border-border rounded p-4 bg-surface/50">
@@ -356,7 +456,6 @@ function StorePreview({ audit }: { audit: ReturnType<typeof useEpiphan.getState>
           </div>
         </div>
 
-        {/* Technical signals */}
         <div className="bg-background">
           <div className="px-3 pt-5 pb-2 text-[10px] uppercase tracking-widest text-muted-foreground">Technical & structural signals</div>
           <Row label="robots.txt" value={robotsLine} fixed={healed("F1.2")} present={detected("F1.2")} />
@@ -371,14 +470,16 @@ function StorePreview({ audit }: { audit: ReturnType<typeof useEpiphan.getState>
   );
 }
 
-function FailureRow({ f }: { f: Failure }) {
+function FailureRow({ f, checked, onCheck, selectable }: { f: Failure; checked: boolean; onCheck: () => void; selectable: boolean }) {
   const autoFix = useEpiphan((s) => s.autoFix);
   const [open, setOpen] = useState(false);
   const canAutoFix = f.fix && (f.status === "eval_passed" || f.status === "detected");
   const isPending = f.status === "review_pending";
   return (
-    <div className="border-b border-border last:border-b-0">
-      <div className="grid grid-cols-[60px_70px_90px_1fr_140px_120px_90px] gap-3 px-5 py-2.5 items-center hover:bg-accent/20">
+    <div className={`border-b border-border last:border-b-0 ${checked ? "bg-primary/5" : ""}`}>
+      <div className="grid grid-cols-[28px_60px_70px_90px_1fr_140px_120px_90px] gap-3 px-5 py-2.5 items-center hover:bg-accent/20">
+        <input type="checkbox" checked={checked} disabled={!selectable} onChange={onCheck}
+          className="accent-primary disabled:opacity-30" />
         <PillarBadge pillar={f.pillar} />
         <div className="text-[11px] tabular-nums text-muted-foreground">{f.failureId}</div>
         <SeverityBadge severity={f.severity} />
@@ -407,20 +508,10 @@ function FailureRow({ f }: { f: Failure }) {
         </div>
       </div>
       {open && f.fix && (
-        <div className="grid md:grid-cols-2 gap-2 px-5 pb-3 bg-background/40">
-          <div className="border border-sev-critical/30 rounded overflow-hidden">
-            <div className="px-2 py-1 text-[9px] uppercase tracking-widest text-sev-critical bg-sev-critical/10 border-b border-sev-critical/30">Before</div>
-            <pre className="text-[10px] p-2 whitespace-pre-wrap max-h-44 overflow-auto text-muted-foreground">{f.fix.before}</pre>
-          </div>
-          <div className="border border-sev-low/30 rounded overflow-hidden">
-            <div className="px-2 py-1 text-[9px] uppercase tracking-widest text-sev-low bg-sev-low/10 border-b border-sev-low/30">After (AI fix)</div>
-            <pre className="text-[10px] p-2 whitespace-pre-wrap max-h-44 overflow-auto text-foreground">{f.fix.after}</pre>
-          </div>
+        <div className="px-5 pb-3 bg-background/40">
+          <DiffPane before={f.fix.before} after={f.fix.after} pillar={f.pillar} maxHeight={200} />
         </div>
       )}
     </div>
   );
 }
-
-
-

@@ -3,9 +3,12 @@ import { useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useEpiphan } from "@/lib/epiphan-store";
 import { PillarRing, PillarBadge, SeverityBadge } from "@/components/PillarRing";
+import { DiffPane } from "@/components/DiffPane";
 import { PILLARS, describeFix, Failure } from "@/lib/epiphan-data";
 import { FixStatusPill } from "./dashboard";
-import { FileDown, Trash2, ChevronRight, Wand2 } from "lucide-react";
+import { FileDown, Trash2, ChevronRight, Wand2, FileText, FileJson } from "lucide-react";
+import { toCsv, toJson, downloadFile } from "@/lib/epiphan-export";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/history")({
   head: () => ({ meta: [{ title: "Audit History · epiphanAI" }] }),
