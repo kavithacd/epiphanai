@@ -22,11 +22,19 @@ function Dashboard() {
   const navigate = useNavigate();
   const active = audits.find((a) => a.id === activeAuditId) ?? audits[0];
 
-  const valid = /(\.myshopify\.com|\.com|\.eu|\.io|\.co)/.test(url);
+  const trimmed = url.trim();
+  // Accept anything substantive: a brand site (nike.com), a marketplace URL,
+  // a Shopify domain, a deep product link, or even a raw SKU. Audit engine
+  // resolves the source at runtime.
+  const valid = trimmed.length >= 3;
 
   function trigger() {
     if (!valid) return;
-    const id = startAudit(url.startsWith("http") ? url : `https://${url}`);
+    const looksLikeUrl = /\./.test(trimmed) || trimmed.startsWith("http");
+    const target = looksLikeUrl
+      ? (trimmed.startsWith("http") ? trimmed : `https://${trimmed}`)
+      : `sku://${trimmed}`;
+    const id = startAudit(target);
     setUrl("");
     setTimeout(() => navigate({ to: "/dashboard" }), 50);
     return id;
@@ -38,28 +46,28 @@ function Dashboard() {
         <header>
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Audit Engine</div>
           <h1 className="text-2xl font-sans font-medium mt-1">Run a GEO audit</h1>
-          <p className="text-muted-foreground text-xs mt-1">Enter any Shopify domain. P1 → P5 runs sequentially, with local-model classification.</p>
+          <p className="text-muted-foreground text-xs mt-1">
+            Paste any brand site, marketplace URL, product page, or SKU. P1 → P5 runs sequentially with local-model classification.
+          </p>
         </header>
 
         <section className="border border-border rounded-lg bg-surface p-5">
           <div className="flex flex-col md:flex-row gap-3 items-stretch">
             <div className="flex-1 flex items-center bg-background border border-border rounded px-3">
-              <span className="text-muted-foreground text-xs mr-2">https://</span>
               <input id="epiphan-audit-url" autoFocus value={url} onChange={(e) => setUrl(e.target.value)}
-                placeholder="acme-apparel.myshopify.com"
-                className="flex-1 bg-transparent outline-none py-2.5 text-sm font-mono" />
+                placeholder="nike.com  ·  adidas.com/yeezy-boost  ·  acme.myshopify.com  ·  SKU-MC-CREW-001"
+                className="flex-1 bg-transparent outline-none py-2.5 text-sm font-mono placeholder:text-muted-foreground/60" />
             </div>
-            <button className="px-4 py-2.5 rounded border border-border bg-background hover:bg-accent/30 text-xs flex items-center gap-2">
-              <Plug className="w-3.5 h-3.5" /> Connect Shopify
-            </button>
             <button onClick={trigger} disabled={!valid}
               className="px-5 py-2.5 rounded bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed text-xs flex items-center gap-2 font-medium">
               <Play className="w-3.5 h-3.5" /> Start Audit
             </button>
           </div>
-          {!valid && url.length > 0 && (
-            <div className="mt-2 text-[10px] text-sev-high">Domain must match Shopify or top-level domain pattern.</div>
-          )}
+          <div className="mt-2 text-[10px] text-muted-foreground">
+            Optional: connect a platform for direct write-back —
+            <a href="/settings#integrations" className="text-primary hover:underline ml-1">Shopify, WooCommerce, Etsy, Akeneo</a>.
+            Audits work without a connector.
+          </div>
         </section>
 
         {active && <ActiveAuditView audit={active} />}
