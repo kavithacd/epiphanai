@@ -65,6 +65,11 @@ export type Fix = {
     objectAccuracy: number;
     overall: "PASS" | "FAIL";
   };
+  // Langfuse / Phoenix / Helicone-style per-fix evaluation telemetry
+  hallucinationScore: number;   // 0-100 — lower is better
+  groundingScore: number;       // 0-100 — higher is better (citation overlap w/ source)
+  reasoning: string;            // judge model's chain-of-thought summary
+  userFeedback?: "pass" | "fail"; // pass = accepted as-is, fail = rejected
   rollbackSnapshot?: string;
 };
 
