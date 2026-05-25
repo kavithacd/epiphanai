@@ -13,6 +13,24 @@ import {
 const uid = () => Math.random().toString(36).slice(2, 11);
 const hash = () => "0x" + Math.random().toString(16).slice(2, 10);
 
+// Judge-model reasoning snippet — Phoenix/Langfuse-style explanation of why
+// the eval passed. Deterministic per pillar/fix-type so demo traces are coherent.
+function judgeReasoning(pillar: PillarId, fixType: string, fp: number, grounding: number): string {
+  const base = `Fact Preservation ${fp}/100 · Grounding ${grounding}/100. `;
+  switch (pillar) {
+    case "P1":
+      return base + `Output references only headers/paths present in the source crawl. No hallucinated routes or competitor mentions detected.`;
+    case "P2":
+      return base + `JSON-LD validates against schema.org/${fixType.includes("breadcrumb") ? "BreadcrumbList" : "Product"}. All required fields trace back to extracted product data; no invented SKUs, prices, or ratings.`;
+    case "P3":
+      return base + `Copy stays inside extracted product attributes. Material, sizing and care claims all map to source fields. No fabricated certifications or delivery promises.`;
+    case "P4":
+      return base + `Vision model description aligned with image embedding similarity > 0.91. Colour, garment type and material verified against catalog metadata.`;
+    case "P5":
+      return base + `Probe results cited directly; no synthesised citations. Outreach plan flagged for human approval before any external action.`;
+  }
+}
+
 function deriveStoreName(url: string) {
   try {
     const u = new URL(url.startsWith("http") ? url : `https://${url}`);
