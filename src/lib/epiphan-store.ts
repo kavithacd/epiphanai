@@ -194,10 +194,15 @@ export const useEpiphan = create<State>((set, get) => ({
             };
             if (c.isAutofixable) {
               const tpl = fixTemplateFor(failure);
+              const fp = 96 + Math.floor(Math.random() * 5); // 96-100
+              const grounding = 92 + Math.floor(Math.random() * 8);
               failure.fix = {
                 id: uid(), fixType: tpl.type, generatedBy: tpl.model,
                 before: tpl.before, after: tpl.after,
-                evalScores: { factPreservation: 100, semanticDensity: 96, structuralSyntax: 100, objectAccuracy: 98, overall: "PASS" },
+                evalScores: { factPreservation: fp, semanticDensity: 96, structuralSyntax: 100, objectAccuracy: 98, overall: "PASS" },
+                hallucinationScore: 100 - fp,
+                groundingScore: grounding,
+                reasoning: judgeReasoning(failure.pillar, tpl.type, fp, grounding),
                 rollbackSnapshot: tpl.before,
               };
               failure.status = c.requiresHuman ? "review_pending" : "eval_passed";
