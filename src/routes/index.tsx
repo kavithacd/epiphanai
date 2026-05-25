@@ -77,7 +77,7 @@ function Hero() {
             autonomous self-healing, and zero data leakage to third-party LLMs.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Link to="/dashboard" className="px-5 py-2.5 rounded bg-primary text-primary-foreground hover:opacity-90 inline-flex items-center gap-2 text-sm font-medium">
+            <Link to="/start" className="px-5 py-2.5 rounded bg-primary text-primary-foreground hover:opacity-90 inline-flex items-center gap-2 text-sm font-medium">
               Run a live audit <ArrowRight className="w-4 h-4" />
             </Link>
             <Link to="/admin" className="px-5 py-2.5 rounded border border-border hover:bg-accent/30 text-sm">
