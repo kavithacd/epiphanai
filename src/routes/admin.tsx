@@ -16,6 +16,21 @@ function Admin() {
   const avgLatency = Math.round(traces.reduce((s, t) => s + t.durationMs, 0) / Math.max(traces.length, 1));
   const evalPass = traces.filter((t) => t.workflow.includes("Eval")).length;
 
+  // Per-fix evaluation traces (Langfuse / Phoenix / Helicone-style)
+  const fixTraces: { failure: Failure; fix: Fix }[] = audits
+    .flatMap((a) => a.failures)
+    .filter((f): f is Failure & { fix: Fix } => !!f.fix)
+    .map((f) => ({ failure: f, fix: f.fix as Fix }))
+    .sort((a, b) => b.failure.detectedAt - a.failure.detectedAt);
+  const feedbackGiven = fixTraces.filter((t) => t.fix.userFeedback);
+  const passCount = feedbackGiven.filter((t) => t.fix.userFeedback === "pass").length;
+  const failCount = feedbackGiven.filter((t) => t.fix.userFeedback === "fail").length;
+  const passRate = feedbackGiven.length === 0 ? null : Math.round((passCount / feedbackGiven.length) * 100);
+  const avgHallucination = fixTraces.length === 0 ? 0 :
+    Math.round(fixTraces.reduce((s, t) => s + t.fix.hallucinationScore, 0) / fixTraces.length);
+  const avgGrounding = fixTraces.length === 0 ? 0 :
+    Math.round(fixTraces.reduce((s, t) => s + t.fix.groundingScore, 0) / fixTraces.length);
+
   return (
     <AppShell>
       <div className="max-w-[1500px] mx-auto p-8 space-y-6">
