@@ -293,7 +293,11 @@ export const useEpiphan = create<State>((set, get) => ({
         failures: a.failures.map((f) => {
           if (f.id !== failureId) return f;
           target = f;
-          return { ...f, status: "deployed" };
+          return {
+            ...f,
+            status: "deployed",
+            fix: f.fix ? { ...f.fix, userFeedback: "pass" } : f.fix,
+          };
         }),
       })),
     }));
