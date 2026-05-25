@@ -323,7 +323,9 @@ export const useEpiphan = create<State>((set, get) => ({
       set((s): Partial<State> => ({
         audits: s.audits.map((a) => ({
           ...a,
-          failures: a.failures.map((x) => x.id === id ? { ...x, status: "deployed" } : x),
+          failures: a.failures.map((x) => x.id === id
+            ? { ...x, status: "deployed", fix: x.fix ? { ...x.fix, userFeedback: "pass" } : x.fix }
+            : x),
         })),
       }));
     });
