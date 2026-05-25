@@ -410,10 +410,19 @@ function seedAudits(): AuditRecord[] {
     };
     if (c.isAutofixable) {
       const tpl = fixTemplateFor(f);
+      const fp = 97 + Math.floor(Math.random() * 4);
+      const grounding = 93 + Math.floor(Math.random() * 7);
+      // Seeded fixes simulate a mix of user feedback so admin pass-rate isn't 100%
+      const userFeedback: "pass" | "fail" | undefined =
+        f.status === "deployed" ? (Math.random() > 0.18 ? "pass" : "fail") : undefined;
       f.fix = {
         id: uid(), fixType: tpl.type, generatedBy: tpl.model,
         before: tpl.before, after: tpl.after,
-        evalScores: { factPreservation: 100, semanticDensity: 97, structuralSyntax: 100, objectAccuracy: 99, overall: "PASS" },
+        evalScores: { factPreservation: fp, semanticDensity: 97, structuralSyntax: 100, objectAccuracy: 99, overall: "PASS" },
+        hallucinationScore: 100 - fp,
+        groundingScore: grounding,
+        reasoning: judgeReasoning(f.pillar, tpl.type, fp, grounding),
+        userFeedback,
         rollbackSnapshot: tpl.before,
       };
     }
