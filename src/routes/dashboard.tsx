@@ -6,7 +6,7 @@ import { DiffPane } from "@/components/DiffPane";
 import { useEpiphan } from "@/lib/epiphan-store";
 import { PILLARS, PillarId, SEVERITY_WEIGHT, Failure } from "@/lib/epiphan-data";
 import { toCsv, toJson, downloadFile, copyToClipboard, toWebhookPayload } from "@/lib/epiphan-export";
-import { Play, Plug, Loader2, CheckCircle2, ArrowRight, Zap, Eye, FileText, FileJson, Copy, Check } from "lucide-react";
+import { Play, Loader2, CheckCircle2, ArrowRight, Zap, Eye, EyeOff, FileText, FileJson, Copy, Check } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { toast } from "sonner";
 
