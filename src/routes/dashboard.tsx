@@ -480,7 +480,9 @@ function StorePreview({ audit }: { audit: ReturnType<typeof useEpiphan.getState>
 
 function FailureRow({ f, checked, onCheck, selectable }: { f: Failure; checked: boolean; onCheck: () => void; selectable: boolean }) {
   const autoFix = useEpiphan((s) => s.autoFix);
-  const [open, setOpen] = useState(false);
+  // Default-open the preview whenever a fix exists so users always SEE what
+  // they're about to deploy before clicking Auto-fix. Collapse remains available.
+  const [open, setOpen] = useState(!!f.fix);
   const canAutoFix = f.fix && (f.status === "eval_passed" || f.status === "detected");
   const isPending = f.status === "review_pending";
   return (
@@ -498,8 +500,8 @@ function FailureRow({ f, checked, onCheck, selectable }: { f: Failure; checked: 
           {f.fix && (
             <button onClick={() => setOpen((o) => !o)}
               className="px-1.5 py-1 rounded border border-border hover:bg-accent/30 text-[10px] flex items-center gap-1"
-              title="Preview before / after">
-              <Eye className="w-3 h-3" />
+              title={open ? "Hide preview" : "Show preview"}>
+              {open ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
             </button>
           )}
           {canAutoFix && (
@@ -516,7 +518,16 @@ function FailureRow({ f, checked, onCheck, selectable }: { f: Failure; checked: 
         </div>
       </div>
       {open && f.fix && (
-        <div className="px-5 pb-3 bg-background/40">
+        <div className="px-5 pb-3 pt-1 bg-background/40 space-y-2">
+          <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest text-muted-foreground">
+            <span>Eval</span>
+            <span className="text-sev-low">Grounding {f.fix.groundingScore}/100</span>
+            <span className="text-sev-low">Hallucination {f.fix.hallucinationScore}/100</span>
+            <span className="text-muted-foreground">·</span>
+            <span className="text-foreground/70 normal-case tracking-normal truncate" title={f.fix.reasoning}>
+              {f.fix.reasoning}
+            </span>
+          </div>
           <DiffPane before={f.fix.before} after={f.fix.after} pillar={f.pillar} maxHeight={200} />
         </div>
       )}
