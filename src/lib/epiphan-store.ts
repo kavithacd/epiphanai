@@ -13,6 +13,24 @@ import {
 const uid = () => Math.random().toString(36).slice(2, 11);
 const hash = () => "0x" + Math.random().toString(16).slice(2, 10);
 
+// Judge-model reasoning snippet — Phoenix/Langfuse-style explanation of why
+// the eval passed. Deterministic per pillar/fix-type so demo traces are coherent.
+function judgeReasoning(pillar: PillarId, fixType: string, fp: number, grounding: number): string {
+  const base = `Fact Preservation ${fp}/100 · Grounding ${grounding}/100. `;
+  switch (pillar) {
+    case "P1":
+      return base + `Output references only headers/paths present in the source crawl. No hallucinated routes or competitor mentions detected.`;
+    case "P2":
+      return base + `JSON-LD validates against schema.org/${fixType.includes("breadcrumb") ? "BreadcrumbList" : "Product"}. All required fields trace back to extracted product data; no invented SKUs, prices, or ratings.`;
+    case "P3":
+      return base + `Copy stays inside extracted product attributes. Material, sizing and care claims all map to source fields. No fabricated certifications or delivery promises.`;
+    case "P4":
+      return base + `Vision model description aligned with image embedding similarity > 0.91. Colour, garment type and material verified against catalog metadata.`;
+    case "P5":
+      return base + `Probe results cited directly; no synthesised citations. Outreach plan flagged for human approval before any external action.`;
+  }
+}
+
 function deriveStoreName(url: string) {
   try {
     const u = new URL(url.startsWith("http") ? url : `https://${url}`);
@@ -194,10 +212,15 @@ export const useEpiphan = create<State>((set, get) => ({
             };
             if (c.isAutofixable) {
               const tpl = fixTemplateFor(failure);
+              const fp = 96 + Math.floor(Math.random() * 5); // 96-100
+              const grounding = 92 + Math.floor(Math.random() * 8);
               failure.fix = {
                 id: uid(), fixType: tpl.type, generatedBy: tpl.model,
                 before: tpl.before, after: tpl.after,
-                evalScores: { factPreservation: 100, semanticDensity: 96, structuralSyntax: 100, objectAccuracy: 98, overall: "PASS" },
+                evalScores: { factPreservation: fp, semanticDensity: 96, structuralSyntax: 100, objectAccuracy: 98, overall: "PASS" },
+                hallucinationScore: 100 - fp,
+                groundingScore: grounding,
+                reasoning: judgeReasoning(failure.pillar, tpl.type, fp, grounding),
                 rollbackSnapshot: tpl.before,
               };
               failure.status = c.requiresHuman ? "review_pending" : "eval_passed";
@@ -270,7 +293,11 @@ export const useEpiphan = create<State>((set, get) => ({
         failures: a.failures.map((f) => {
           if (f.id !== failureId) return f;
           target = f;
-          return { ...f, status: "deployed" };
+          return {
+            ...f,
+            status: "deployed",
+            fix: f.fix ? { ...f.fix, userFeedback: "pass" } : f.fix,
+          };
         }),
       })),
     }));
@@ -296,7 +323,9 @@ export const useEpiphan = create<State>((set, get) => ({
       set((s): Partial<State> => ({
         audits: s.audits.map((a) => ({
           ...a,
-          failures: a.failures.map((x) => x.id === id ? { ...x, status: "deployed" } : x),
+          failures: a.failures.map((x) => x.id === id
+            ? { ...x, status: "deployed", fix: x.fix ? { ...x.fix, userFeedback: "pass" } : x.fix }
+            : x),
         })),
       }));
     });
@@ -329,7 +358,9 @@ export const useEpiphan = create<State>((set, get) => ({
     set((s): Partial<State> => ({
       audits: s.audits.map((a) => ({
         ...a,
-        failures: a.failures.map((f) => f.id === failureId ? { ...f, status: "rejected" } : f),
+        failures: a.failures.map((f) => f.id === failureId
+          ? { ...f, status: "rejected", fix: f.fix ? { ...f.fix, userFeedback: "fail" } : f.fix }
+          : f),
       })),
       guardrailEvents: [
         { id: uid(), ts: Date.now(), rule: "Human Review", outcome: "blocked" as const, detail: `Fix rejected: ${reason}` },
@@ -387,10 +418,19 @@ function seedAudits(): AuditRecord[] {
     };
     if (c.isAutofixable) {
       const tpl = fixTemplateFor(f);
+      const fp = 97 + Math.floor(Math.random() * 4);
+      const grounding = 93 + Math.floor(Math.random() * 7);
+      // Seeded fixes simulate a mix of user feedback so admin pass-rate isn't 100%
+      const userFeedback: "pass" | "fail" | undefined =
+        f.status === "deployed" ? (Math.random() > 0.18 ? "pass" : "fail") : undefined;
       f.fix = {
         id: uid(), fixType: tpl.type, generatedBy: tpl.model,
         before: tpl.before, after: tpl.after,
-        evalScores: { factPreservation: 100, semanticDensity: 97, structuralSyntax: 100, objectAccuracy: 99, overall: "PASS" },
+        evalScores: { factPreservation: fp, semanticDensity: 97, structuralSyntax: 100, objectAccuracy: 99, overall: "PASS" },
+        hallucinationScore: 100 - fp,
+        groundingScore: grounding,
+        reasoning: judgeReasoning(f.pillar, tpl.type, fp, grounding),
+        userFeedback,
         rollbackSnapshot: tpl.before,
       };
     }

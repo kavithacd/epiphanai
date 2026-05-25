@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { useEpiphan } from "@/lib/epiphan-store";
-import { MODEL_MATRIX } from "@/lib/epiphan-data";
-import { Cpu, ShieldCheck, ShieldAlert, Lock, Activity, Coins } from "lucide-react";
+import { MODEL_MATRIX, PILLARS, Failure, Fix } from "@/lib/epiphan-data";
+import { Cpu, ShieldCheck, ShieldAlert, Lock, Activity, Coins, ThumbsUp, ThumbsDown, Microscope } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Admin Cockpit · epiphanAI" }] }),
@@ -15,6 +15,21 @@ function Admin() {
   const totalTokens = traces.reduce((s, t) => s + t.tokensIn + t.tokensOut, 0);
   const avgLatency = Math.round(traces.reduce((s, t) => s + t.durationMs, 0) / Math.max(traces.length, 1));
   const evalPass = traces.filter((t) => t.workflow.includes("Eval")).length;
+
+  // Per-fix evaluation traces (Langfuse / Phoenix / Helicone-style)
+  const fixTraces: { failure: Failure; fix: Fix }[] = audits
+    .flatMap((a) => a.failures)
+    .filter((f): f is Failure & { fix: Fix } => !!f.fix)
+    .map((f) => ({ failure: f, fix: f.fix as Fix }))
+    .sort((a, b) => b.failure.detectedAt - a.failure.detectedAt);
+  const feedbackGiven = fixTraces.filter((t) => t.fix.userFeedback);
+  const passCount = feedbackGiven.filter((t) => t.fix.userFeedback === "pass").length;
+  const failCount = feedbackGiven.filter((t) => t.fix.userFeedback === "fail").length;
+  const passRate = feedbackGiven.length === 0 ? null : Math.round((passCount / feedbackGiven.length) * 100);
+  const avgHallucination = fixTraces.length === 0 ? 0 :
+    Math.round(fixTraces.reduce((s, t) => s + t.fix.hallucinationScore, 0) / fixTraces.length);
+  const avgGrounding = fixTraces.length === 0 ? 0 :
+    Math.round(fixTraces.reduce((s, t) => s + t.fix.groundingScore, 0) / fixTraces.length);
 
   return (
     <AppShell>
@@ -75,6 +90,94 @@ function Admin() {
               <Stat label="Valid" value="29" color="var(--sev-low)" />
               <Stat label="Blocked" value="0" color="var(--sev-critical)" />
             </div>
+          </div>
+        </section>
+
+        {/* Per-Fix Evaluation Traces — Langfuse / Phoenix / Helicone style */}
+        <section className="border border-border rounded-lg bg-surface overflow-hidden">
+          <div className="px-5 py-3 border-b border-border flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-2">
+              <Microscope className="w-3.5 h-3.5 text-primary" />
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                Fix Evaluation Traces · open-source style (Langfuse · Phoenix · Helicone)
+              </div>
+            </div>
+            <div className="flex items-center gap-4 text-[10px] text-muted-foreground tabular-nums">
+              <span>Avg hallucination <span className="text-sev-low ml-1">{avgHallucination}/100</span></span>
+              <span>Avg grounding <span className="text-sev-low ml-1">{avgGrounding}/100</span></span>
+              <span className="flex items-center gap-1.5">
+                User pass-rate
+                <span className={passRate === null ? "text-muted-foreground" : passRate >= 80 ? "text-sev-low" : passRate >= 50 ? "text-sev-medium" : "text-sev-critical"}>
+                  {passRate === null ? "—" : `${passRate}%`}
+                </span>
+                <span className="text-muted-foreground">({passCount}✓ / {failCount}✗ · {feedbackGiven.length} rated)</span>
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-[100px_55px_60px_1fr_140px_100px_100px_180px_90px] gap-3 px-5 py-2 text-[9px] uppercase tracking-widest text-muted-foreground bg-background/40">
+            <div>Trace ID</div>
+            <div>Pillar</div>
+            <div>Sev</div>
+            <div>Failure</div>
+            <div>Model</div>
+            <div>Halluc.</div>
+            <div>Grounding</div>
+            <div>Judge reasoning</div>
+            <div className="text-right">User</div>
+          </div>
+
+          <div className="divide-y divide-border max-h-[480px] overflow-auto">
+            {fixTraces.length === 0 ? (
+              <div className="p-10 text-center text-[11px] text-muted-foreground">
+                No fixes generated yet. Run an audit to populate per-fix traces.
+              </div>
+            ) : fixTraces.map(({ failure: f, fix }) => {
+              const pColor = `var(--color-${PILLARS.find((p) => p.id === f.pillar)!.tokenVar})`;
+              const sevColor = `var(--sev-${f.severity.toLowerCase()})`;
+              return (
+                <div key={fix.id} className="grid grid-cols-[100px_55px_60px_1fr_140px_100px_100px_180px_90px] gap-3 px-5 py-2.5 items-center text-[11px] hover:bg-accent/20">
+                  <div className="font-mono text-[10px] text-muted-foreground truncate">trc_{fix.id}</div>
+                  <div>
+                    <span className="text-[10px] tabular-nums font-semibold px-1.5 py-0.5 rounded border" style={{ color: pColor, borderColor: pColor + "40", background: pColor + "10" }}>
+                      {f.pillar}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[9px] uppercase tracking-widest px-1 py-0.5 rounded" style={{ color: sevColor, background: sevColor + "15" }}>
+                      {f.severity.slice(0, 3)}
+                    </span>
+                  </div>
+                  <div className="text-foreground truncate" title={f.failureName}>{f.failureName}</div>
+                  <div className="text-muted-foreground truncate">{fix.generatedBy}</div>
+                  <div className="tabular-nums" style={{ color: fix.hallucinationScore <= 5 ? "var(--sev-low)" : fix.hallucinationScore <= 15 ? "var(--sev-medium)" : "var(--sev-critical)" }}>
+                    {fix.hallucinationScore}/100
+                  </div>
+                  <div className="tabular-nums" style={{ color: fix.groundingScore >= 90 ? "var(--sev-low)" : fix.groundingScore >= 75 ? "var(--sev-medium)" : "var(--sev-critical)" }}>
+                    {fix.groundingScore}/100
+                  </div>
+                  <div className="text-muted-foreground text-[10px] truncate" title={fix.reasoning}>{fix.reasoning}</div>
+                  <div className="text-right">
+                    {fix.userFeedback === "pass" ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded border border-sev-low/40 text-sev-low bg-sev-low/10">
+                        <ThumbsUp className="w-2.5 h-2.5" /> Pass
+                      </span>
+                    ) : fix.userFeedback === "fail" ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded border border-sev-critical/40 text-sev-critical bg-sev-critical/10">
+                        <ThumbsDown className="w-2.5 h-2.5" /> Fail
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Pending</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="px-5 py-2 border-t border-border text-[9px] uppercase tracking-widest text-muted-foreground bg-background/40 flex items-center justify-between">
+            <span>Schema compatible with Langfuse traces · Phoenix spans · Helicone observability events</span>
+            <span>{fixTraces.length} fix trace{fixTraces.length === 1 ? "" : "s"}</span>
           </div>
         </section>
 
