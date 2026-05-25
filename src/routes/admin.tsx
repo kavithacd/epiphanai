@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { useEpiphan } from "@/lib/epiphan-store";
-import { MODEL_MATRIX } from "@/lib/epiphan-data";
-import { Cpu, ShieldCheck, ShieldAlert, Lock, Activity, Coins } from "lucide-react";
+import { MODEL_MATRIX, PILLARS, Failure, Fix } from "@/lib/epiphan-data";
+import { Cpu, ShieldCheck, ShieldAlert, Lock, Activity, Coins, ThumbsUp, ThumbsDown, Microscope } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Admin Cockpit · epiphanAI" }] }),
