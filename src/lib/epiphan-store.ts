@@ -356,7 +356,9 @@ export const useEpiphan = create<State>((set, get) => ({
     set((s): Partial<State> => ({
       audits: s.audits.map((a) => ({
         ...a,
-        failures: a.failures.map((f) => f.id === failureId ? { ...f, status: "rejected" } : f),
+        failures: a.failures.map((f) => f.id === failureId
+          ? { ...f, status: "rejected", fix: f.fix ? { ...f.fix, userFeedback: "fail" } : f.fix }
+          : f),
       })),
       guardrailEvents: [
         { id: uid(), ts: Date.now(), rule: "Human Review", outcome: "blocked" as const, detail: `Fix rejected: ${reason}` },
