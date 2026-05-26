@@ -406,7 +406,12 @@ export const useEpiphan = create<State>((set, get) => ({
 }));
 
 // ──────────────────────────────── seed data ────────────────────────────────
+// All seed values must be deterministic — SSR HTML must byte-match the first
+// client render or React throws hydration errors. We use mulberry32 with a
+// fixed seed and a fixed epoch (no Date.now()) so values are stable.
+const SEED_EPOCH = 1748275200000; // fixed point so Date.now() drift can't cause SSR/client mismatch
 function seedAudits(): AuditRecord[] {
+  const rng = mulberry32(hashStr("epiphan-seed-audits-v1"));
   const a1: AuditRecord = {
     id: "demo-acme",
     url: "https://acme-apparel.myshopify.com",
@@ -414,24 +419,24 @@ function seedAudits(): AuditRecord[] {
     status: "complete", currentPillar: null,
     scores: { P1: 70, P2: 40, P3: 30, P4: 65, P5: 50 },
     failures: [],
-    createdAt: Date.now() - 1000 * 60 * 60 * 24 * 2,
-    completedAt: Date.now() - 1000 * 60 * 60 * 24 * 2 + 1000 * 60 * 47,
+    createdAt: SEED_EPOCH - 1000 * 60 * 60 * 24 * 2,
+    completedAt: SEED_EPOCH - 1000 * 60 * 60 * 24 * 2 + 1000 * 60 * 47,
+    ctx: DEMO_CTX,
   };
   a1.failures = FAILURE_CATALOG.slice(0, 12).map((c) => {
     const f: Failure = {
-      ...c, id: uid(), auditId: a1.id,
+      ...c, id: sUid(rng), auditId: a1.id,
       status: c.isAutofixable && !c.requiresHuman ? "deployed" : "review_pending",
       detectedAt: a1.createdAt,
     };
     if (c.isAutofixable) {
-      const tpl = fixTemplateFor(f);
-      const fp = 97 + Math.floor(Math.random() * 4);
-      const grounding = 93 + Math.floor(Math.random() * 7);
-      // Seeded fixes simulate a mix of user feedback so admin pass-rate isn't 100%
+      const tpl = fixTemplateFor(f, DEMO_CTX);
+      const fp = 97 + seededInt(rng, 0, 3);
+      const grounding = 93 + seededInt(rng, 0, 6);
       const userFeedback: "pass" | "fail" | undefined =
-        f.status === "deployed" ? (Math.random() > 0.18 ? "pass" : "fail") : undefined;
+        f.status === "deployed" ? (rng() > 0.18 ? "pass" : "fail") : undefined;
       f.fix = {
-        id: uid(), fixType: tpl.type, generatedBy: tpl.model,
+        id: sUid(rng), fixType: tpl.type, generatedBy: tpl.model,
         before: tpl.before, after: tpl.after,
         evalScores: { factPreservation: fp, semanticDensity: 97, structuralSyntax: 100, objectAccuracy: 99, overall: "PASS" },
         hallucinationScore: 100 - fp,
@@ -447,6 +452,7 @@ function seedAudits(): AuditRecord[] {
 }
 
 function seedTraces(): TraceLog[] {
+  const rng = mulberry32(hashStr("epiphan-seed-traces-v1"));
   const t: TraceLog[] = [];
   const wfs = [
     { wf: "WF-02 P1 Audit", model: "Phi-4" },
@@ -458,12 +464,12 @@ function seedTraces(): TraceLog[] {
   for (let i = 0; i < 14; i++) {
     const w = wfs[i % wfs.length];
     t.push({
-      id: uid(), timestamp: Date.now() - i * 1000 * 60 * 7,
-      model: w.model, workflow: w.wf, promptHash: hash(),
+      id: sUid(rng), timestamp: SEED_EPOCH - i * 1000 * 60 * 7,
+      model: w.model, workflow: w.wf, promptHash: sHash(rng),
       operator: "consultant@tessera.eu",
-      durationMs: 320 + Math.floor(Math.random() * 2200),
-      tokensIn: 200 + Math.floor(Math.random() * 1200),
-      tokensOut: 60 + Math.floor(Math.random() * 800),
+      durationMs: 320 + seededInt(rng, 0, 2199),
+      tokensIn: 200 + seededInt(rng, 0, 1199),
+      tokensOut: 60 + seededInt(rng, 0, 799),
       costUsd: 0, status: i === 11 ? "failure" : "success",
     });
   }
