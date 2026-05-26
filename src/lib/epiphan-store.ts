@@ -117,7 +117,7 @@ function recordDeployment(
     const scoresAfter = computeScores(updated);
     const before = Object.values(scoresBefore).reduce((s, n) => s + n, 0) / 5;
     const after = Object.values(scoresAfter).reduce((s, n) => s + n, 0) / 5;
-    const d = describeFix(f);
+    const d = describeFix(f, a.ctx);
     const entry: FixHistoryEntry = {
       id: uid(), auditId: a.id, failureId: f.failureId, failureRecordId: f.id,
       pillar: f.pillar, severity: f.severity, title: d.title, detail: d.detail,
