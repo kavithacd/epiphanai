@@ -313,7 +313,8 @@ export const useEpiphan = create<State>((set, get) => ({
       durationMs: 820, tokensIn: 0, tokensOut: 0, costUsd: 0, status: "success",
     });
     if (target) {
-      const d = describeFix(target);
+      const auditCtx = get().audits.find((a) => a.failures.some((f) => f.id === failureId))?.ctx;
+      const d = describeFix(target, auditCtx);
       toast.success(d.title, { description: d.detail });
     }
   },
