@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import {
   AuditRecord, Failure, Fix, FAILURE_CATALOG, fixTemplateFor, PILLARS,
   PillarId, SEVERITY_WEIGHT, TraceLog, MODEL_MATRIX, describeFix,
+  inferProductContext, DEMO_CTX, ProductContext, mulberry32, seededInt, hashStr,
 } from "./epiphan-data";
 import {
   IntegrationConfig, EMPTY_INTEGRATIONS, PlatformId, PLATFORM_LABEL,
@@ -10,8 +11,12 @@ import {
 } from "./epiphan-export";
 
 
+// Runtime IDs only (post-mount) — safe for hydration.
 const uid = () => Math.random().toString(36).slice(2, 11);
 const hash = () => "0x" + Math.random().toString(16).slice(2, 10);
+// Seeded variants used in seed* functions so SSR HTML == first client render.
+const sUid = (rng: () => number) => Math.floor(rng() * 1e11).toString(36).slice(0, 9);
+const sHash = (rng: () => number) => "0x" + Math.floor(rng() * 0xffffffff).toString(16).padStart(8, "0").slice(0, 8);
 
 // Judge-model reasoning snippet — Phoenix/Langfuse-style explanation of why
 // the eval passed. Deterministic per pillar/fix-type so demo traces are coherent.
