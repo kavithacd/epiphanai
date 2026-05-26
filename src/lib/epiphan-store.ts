@@ -193,11 +193,13 @@ export const useEpiphan = create<State>((set, get) => ({
 
   startAudit: (url) => {
     const id = uid();
+    const ctx = inferProductContext(url);
     const audit: AuditRecord = {
-      id, url, storeName: deriveStoreName(url),
+      id, url, storeName: ctx.brand || deriveStoreName(url),
       status: "running", currentPillar: "P1",
       scores: emptyScores(), failures: [],
       createdAt: Date.now(),
+      ctx,
     };
     set((s): Partial<State> => ({ audits: [audit, ...s.audits], activeAuditId: id }));
 
@@ -216,8 +218,8 @@ export const useEpiphan = create<State>((set, get) => ({
               status: "detected", detectedAt: Date.now(),
             };
             if (c.isAutofixable) {
-              const tpl = fixTemplateFor(failure);
-              const fp = 96 + Math.floor(Math.random() * 5); // 96-100
+              const tpl = fixTemplateFor(failure, ctx);
+              const fp = 96 + Math.floor(Math.random() * 5);
               const grounding = 92 + Math.floor(Math.random() * 8);
               failure.fix = {
                 id: uid(), fixType: tpl.type, generatedBy: tpl.model,
@@ -254,7 +256,7 @@ export const useEpiphan = create<State>((set, get) => ({
                       failures: a.failures.map((ff) => ff.id === deployId ? { ...ff, status: "deployed" } : ff),
                     } : a),
                   }));
-                  const d = describeFix(failure);
+                  const d = describeFix(failure, ctx);
                   toast.success(d.title, { description: d.detail });
                 }, 1200 + Math.floor(Math.random() * 1400));
               }
@@ -264,7 +266,6 @@ export const useEpiphan = create<State>((set, get) => ({
             set((s): Partial<State> => ({
               audits: s.audits.map((a) => a.id === id ? { ...a, failures: [...a.failures, failure] } : a),
             }));
-            // Slack notify on detection of a CRITICAL failure
             if (failure.severity === "CRITICAL") {
               setTimeout(() => get().notifySlackCritical(failure.id), 100);
             }
