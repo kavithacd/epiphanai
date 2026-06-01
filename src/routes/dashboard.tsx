@@ -457,8 +457,9 @@ function FeedSection({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<FeedFilter>("all");
   const [regenBatch, setRegenBatch] = useState<Set<string>>(new Set());
+  const [regenSummary, setRegenSummary] = useState<{ passed: number; total: number } | null>(null);
 
-  useEffect(() => { setFilter("all"); setSelected(new Set()); setRegenBatch(new Set()); }, [audit.id]);
+  useEffect(() => { setFilter("all"); setSelected(new Set()); setRegenBatch(new Set()); setRegenSummary(null); }, [audit.id]);
 
   useEffect(() => {
     if (regenBatch.size === 0) return;
@@ -467,6 +468,7 @@ function FeedSection({
     if (!allSettled) return;
     const passed = batchFailures.filter((f) => f.status !== "eval_failed").length;
     const stillFailed = batchFailures.length - passed;
+    setRegenSummary({ passed, total: batchFailures.length });
     if (stillFailed === 0) {
       toast.success(`All ${batchFailures.length} fix${batchFailures.length === 1 ? "" : "es"} passed the eval gate`, {
         description: "Ready to deploy — approve from the Review Queue or click Fix in the feed.",
@@ -593,6 +595,7 @@ function FeedSection({
                   const ids = evalFailed.map((f) => f.id);
                   ids.forEach((id) => regenerateFix(id));
                   setRegenBatch(new Set(ids));
+                  setRegenSummary(null);
                   toast.message("Regenerating failed fixes…", { description: `Re-running AI generation for ${evalFailed.length} eval-failed fix${evalFailed.length === 1 ? "" : "es"}.` });
                 }}
                 disabled={evalFailed.every((f) => f.status === "generating")}
@@ -608,6 +611,42 @@ function FeedSection({
               </button>
             )}
           </div>
+        </div>
+      )}
+
+      {regenSummary && (
+        <div className={`px-5 py-3 border-b border-border flex items-start justify-between gap-3 text-xs ${
+          regenSummary.passed === regenSummary.total
+            ? "bg-sev-low/8 border-sev-low/20"
+            : "bg-sev-high/8 border-sev-high/20"
+        }`}>
+          <div className="flex items-start gap-2">
+            <span className={`mt-0.5 text-[11px] ${regenSummary.passed === regenSummary.total ? "text-sev-low" : "text-sev-high"}`}>
+              {regenSummary.passed === regenSummary.total ? "●" : "◐"}
+            </span>
+            <div>
+              <div className={`font-medium ${regenSummary.passed === regenSummary.total ? "text-sev-low" : "text-sev-high"}`}>
+                {regenSummary.passed === regenSummary.total
+                  ? `All ${regenSummary.total} fix${regenSummary.total === 1 ? "" : "es"} passed the eval gate`
+                  : `${regenSummary.passed} of ${regenSummary.total} fix${regenSummary.total === 1 ? "" : "es"} passed the eval gate · ${regenSummary.total - regenSummary.passed} still failing`}
+              </div>
+              {regenSummary.passed < regenSummary.total && (
+                <div className="text-[10px] text-muted-foreground mt-0.5">
+                  Try lowering eval thresholds in Settings, or expand the failing row to edit the fix manually.
+                </div>
+              )}
+              {regenSummary.passed === regenSummary.total && (
+                <div className="text-[10px] text-muted-foreground mt-0.5">
+                  Ready to deploy — approve from the Review Queue or click Fix in the feed.
+                </div>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={() => setRegenSummary(null)}
+            className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors text-base leading-none mt-0.5"
+            aria-label="Dismiss"
+          >×</button>
         </div>
       )}
 
