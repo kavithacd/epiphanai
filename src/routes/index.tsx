@@ -121,9 +121,7 @@ function Pillars() {
             <h2 className="text-3xl font-sans font-medium leading-tight">The five pillars that decide whether AI cites you.</h2>
           </div>
           <p className="md:col-span-2 text-muted-foreground leading-relaxed text-base">
-            Every Shopify store is scanned against a deterministic 5-pillar taxonomy. Each failure
-            is classified, scored, and routed to the correct sovereign model for remediation —
-            with the Eval Gate blocking any output that fails Fact Preservation.
+            Each failure is classified, scored, and routed to the correct remediation.
           </p>
         </div>
         <div className="grid md:grid-cols-5 gap-px bg-border border border-border">
