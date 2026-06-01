@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useBlocker } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { useEpiphan, EVAL_THRESHOLD_META } from "@/lib/epiphan-store";
 import { resolveProbeQuery, ProductContext } from "@/lib/epiphan-data";
@@ -48,6 +48,16 @@ function Settings() {
     brandInput !== savedBrandInput ||
     localCompetitors.length !== brandMonitorConfig.competitors.length ||
     localCompetitors.some((c, i) => c !== brandMonitorConfig.competitors[i]);
+
+  useBlocker({
+    condition: isBrandDirty,
+    blockerFn: () =>
+      Promise.resolve(
+        window.confirm(
+          "You have unsaved Brand Monitoring changes. Leave this page and discard them?"
+        )
+      ),
+  });
 
   function resetBrandForm() {
     setBrandInput(savedBrandInput);
