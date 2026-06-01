@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { AppShell } from "@/components/AppShell";
 import { PillarRing, SeverityBadge, PillarBadge } from "@/components/PillarRing";
 import { DiffPane } from "@/components/DiffPane";
@@ -254,6 +254,8 @@ function ScoreTrend({
 }
 
 // ─── Failure feed with bulk select ───────────────────────────────────────
+type FeedFilter = "all" | "eval_failed" | "review_pending";
+
 function FeedSection({
   audit, isRunning,
 }: {
@@ -263,9 +265,19 @@ function FeedSection({
   const bulkAutoFix = useEpiphan((s) => s.bulkAutoFix);
   const regenerateFix = useEpiphan((s) => s.regenerateFix);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [filter, setFilter] = useState<FeedFilter>("all");
+
+  useEffect(() => { setFilter("all"); setSelected(new Set()); }, [audit.id]);
 
   const evalFailed = audit.failures.filter((f) => f.status === "eval_failed");
   const selectable = audit.failures.filter((f) => f.fix && (f.status === "eval_passed" || f.status === "detected" || f.status === "review_pending"));
+
+  const visibleFailures = useMemo(() => {
+    const reversed = audit.failures.slice().reverse();
+    if (filter === "eval_failed") return reversed.filter((f) => f.status === "eval_failed");
+    if (filter === "review_pending") return reversed.filter((f) => f.status === "review_pending");
+    return reversed;
+  }, [audit.failures, filter]);
   const toggle = (id: string) => {
     const n = new Set(selected); n.has(id) ? n.delete(id) : n.add(id); setSelected(n);
   };
@@ -289,8 +301,44 @@ function FeedSection({
   return (
     <section className="border border-border rounded-lg bg-surface overflow-hidden">
       <div className="px-5 py-3 border-b border-border flex items-center justify-between gap-3 flex-wrap">
-        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-          Live Failure Feed · {audit.failures.length} detected
+        <div className="flex items-center gap-3">
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+            Live Failure Feed ·{" "}
+            {filter === "all"
+              ? `${audit.failures.length} detected`
+              : `${visibleFailures.length} of ${audit.failures.length}`}
+          </div>
+          {audit.failures.length > 0 && (
+            <div className="flex items-center gap-1">
+              {([
+                ["all", "All"],
+                ["eval_failed", "Eval failed"],
+                ["review_pending", "Pending"],
+              ] as [FeedFilter, string][]).map(([val, label]) => {
+                const active = filter === val;
+                return (
+                  <button
+                    key={val}
+                    onClick={() => setFilter(val)}
+                    className={`text-[9px] uppercase tracking-widest px-2 py-0.5 rounded border transition-colors ${
+                      active
+                        ? val === "eval_failed"
+                          ? "border-sev-critical/50 text-sev-critical bg-sev-critical/10"
+                          : val === "review_pending"
+                          ? "border-sev-high/50 text-sev-high bg-sev-high/10"
+                          : "border-primary/50 text-primary bg-primary/10"
+                        : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
+                    }`}
+                  >
+                    {label}
+                    {val === "eval_failed" && evalFailed.length > 0 && ` (${evalFailed.length})`}
+                    {val === "review_pending" && selectable.length > 0 &&
+                      ` (${audit.failures.filter((f) => f.status === "review_pending").length})`}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {isRunning && (
@@ -354,12 +402,17 @@ function FeedSection({
         <div className="p-12 text-center text-muted-foreground text-xs">
           {isRunning ? "Scanning… failures will appear here as detected." : "No failures detected."}
         </div>
+      ) : visibleFailures.length === 0 ? (
+        <div className="p-10 text-center text-muted-foreground text-xs">
+          No {filter === "eval_failed" ? "eval-failed" : "pending"} rows right now.{" "}
+          <button onClick={() => setFilter("all")} className="text-primary hover:underline">Show all</button>
+        </div>
       ) : (
         <div className="divide-y divide-border">
           <div className="grid grid-cols-[28px_60px_70px_90px_1fr_140px_120px_90px] gap-3 px-5 py-2 text-[9px] uppercase tracking-widest text-muted-foreground bg-background/40">
             <div></div><div>Pillar</div><div>ID</div><div>Severity</div><div>Failure</div><div>Fix Status</div><div>Model</div><div className="text-right">Action</div>
           </div>
-          {audit.failures.slice().reverse().map((f) => (
+          {visibleFailures.map((f) => (
             <FailureRow key={f.id} f={f}
               checked={selected.has(f.id)}
               onCheck={() => toggle(f.id)}
