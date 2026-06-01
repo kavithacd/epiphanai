@@ -53,6 +53,7 @@ function buildCompetitorList(
   brand: string,
   auditId: string,
   engines: string[],
+  savedCompetitors: string[] = [],
 ): { name: string; perEngine: Record<string, number>; total: number }[] {
   const rng = mulberry32(hashStr(auditId + industry + "competitors"));
 
@@ -61,11 +62,28 @@ function buildCompetitorList(
     if (regex.test(industry)) { pool = names; break; }
   }
 
-  // If F5.2 gives us a parseable competitor, pin it as the top entry
+  // Saved competitors from setup are the primary seed (filtered against brand name)
+  const saved = savedCompetitors
+    .map((s) => s.trim())
+    .filter((s) => s && s.toLowerCase() !== brand.toLowerCase());
+
+  // If F5.2 gives us a parseable competitor, pin it at the front if not already present
   const pinned = f52Detail ? parseCompetitorFromF52(f52Detail) : null;
-  const filtered = pool.filter((n) => n.toLowerCase() !== brand.toLowerCase() && n !== pinned);
-  const shuffled = [...filtered].sort(() => rng() - 0.5);
-  const names = pinned ? [pinned, ...shuffled.slice(0, 4)] : shuffled.slice(0, 5);
+  const savedLower = new Set(saved.map((n) => n.toLowerCase()));
+  let names: string[] = [...saved];
+  if (pinned && !savedLower.has(pinned.toLowerCase()) && pinned.toLowerCase() !== brand.toLowerCase()) {
+    names.unshift(pinned);
+  }
+
+  // Fill remaining slots (up to 5 total) from the industry pool
+  if (names.length < 5) {
+    const usedLower = new Set(names.map((n) => n.toLowerCase()));
+    const filtered = pool.filter(
+      (n) => n.toLowerCase() !== brand.toLowerCase() && !usedLower.has(n.toLowerCase()),
+    );
+    const shuffled = [...filtered].sort(() => rng() - 0.5);
+    names = [...names, ...shuffled].slice(0, 5);
+  }
 
   return names.slice(0, 5).map((name, rank) => {
     const perEngine: Record<string, number> = {};
@@ -324,8 +342,8 @@ function BrandMonitoring() {
   const industry = audit.ctx?.industry ?? "E-commerce";
 
   const competitors = useMemo(() =>
-    buildCompetitorList(f52Detail, industry, brand, audit.id, enabledEngines.map((e) => e.id)),
-    [f52Detail, industry, brand, audit.id, enabledEngines]
+    buildCompetitorList(f52Detail, industry, brand, audit.id, enabledEngines.map((e) => e.id), brandMonitorConfig.competitors),
+    [f52Detail, industry, brand, audit.id, enabledEngines, brandMonitorConfig.competitors]
   );
 
   const resolvedQueries = useMemo(() => {
