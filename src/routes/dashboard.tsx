@@ -6,7 +6,7 @@ import { DiffPane } from "@/components/DiffPane";
 import { useEpiphan } from "@/lib/epiphan-store";
 import { PILLARS, PillarId, SEVERITY_WEIGHT, Failure } from "@/lib/epiphan-data";
 import { toCsv, toJson, downloadFile, copyToClipboard, toWebhookPayload } from "@/lib/epiphan-export";
-import { Play, Loader2, CheckCircle2, ArrowRight, Zap, Eye, EyeOff, FileText, FileJson, Copy, Check } from "lucide-react";
+import { Play, Loader2, CheckCircle2, ArrowRight, Zap, Eye, EyeOff, FileText, FileJson, Copy, Check, AlertCircle } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { toast } from "sonner";
 
@@ -481,34 +481,51 @@ function StorePreview({ audit }: { audit: ReturnType<typeof useEpiphan.getState>
 
 function FailureRow({ f, checked, onCheck, selectable }: { f: Failure; checked: boolean; onCheck: () => void; selectable: boolean }) {
   const autoFix = useEpiphan((s) => s.autoFix);
-  // Default-open the preview whenever a fix exists so users always SEE what
-  // they're about to deploy before clicking Auto-fix. Collapse remains available.
-  const [open, setOpen] = useState(!!f.fix);
+  const evalThresholds = useEpiphan((s) => s.evalThresholds);
+  const isManual = !f.fix;
+  const isEvalFailed = f.status === "eval_failed";
+  // Default open: always show detail for manual/eval-failed rows; show diff for fix rows
+  const [open, setOpen] = useState(true);
   const canAutoFix = f.fix && (f.status === "eval_passed" || f.status === "detected");
   const isPending = f.status === "review_pending";
+
+  const disabledTitle = !selectable
+    ? isManual ? "No automated fix available — expand for manual action guidance"
+    : isEvalFailed ? "Fix failed the eval gate — expand to see which metrics missed the threshold"
+    : f.status === "deployed" ? "Already healed"
+    : f.status === "rejected" ? "Fix was rejected"
+    : undefined
+    : undefined;
+
   return (
-    <div className={`border-b border-border last:border-b-0 ${checked ? "bg-primary/5" : ""}`}>
-      <div className="grid grid-cols-[28px_60px_70px_90px_1fr_140px_120px_90px] gap-3 px-5 py-2.5 items-center hover:bg-accent/20">
-        <input type="checkbox" checked={checked} disabled={!selectable} onChange={onCheck}
-          className="accent-primary disabled:opacity-30" />
-        <PillarBadge pillar={f.pillar} />
-        <div className="text-[11px] tabular-nums text-muted-foreground">{f.failureId}</div>
-        <SeverityBadge severity={f.severity} />
-        <div className="text-xs text-foreground truncate" title={f.detail}>{f.failureName}</div>
-        <FixStatusPill status={f.status} />
-        <div className="text-[10px] text-muted-foreground truncate">{f.fix?.generatedBy ?? "—"}</div>
-        <div className="text-right flex justify-end gap-1">
-          {f.fix && (
-            <button onClick={() => setOpen((o) => !o)}
-              className="px-1.5 py-1 rounded border border-border hover:bg-accent/30 text-[10px] flex items-center gap-1"
-              title={open ? "Hide preview" : "Show preview"}>
-              {open ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-            </button>
-          )}
+    <div className={`border-b border-border last:border-b-0 ${checked ? "bg-primary/5" : ""} ${isEvalFailed ? "border-l-2 border-l-sev-critical/40" : ""}`}>
+      <div className="grid grid-cols-[28px_60px_70px_90px_1fr_140px_120px_100px] gap-3 px-5 py-2.5 items-start hover:bg-accent/20">
+        <div className="pt-1">
+          <input type="checkbox" checked={checked} disabled={!selectable} onChange={onCheck}
+            title={disabledTitle}
+            className="accent-primary disabled:opacity-30" />
+        </div>
+        <div className="pt-1"><PillarBadge pillar={f.pillar} /></div>
+        <div className="pt-1 text-[11px] tabular-nums text-muted-foreground">{f.failureId}</div>
+        <div className="pt-1"><SeverityBadge severity={f.severity} /></div>
+        <div className="min-w-0">
+          <div className="text-xs text-foreground">{f.failureName}</div>
+          <div className="text-[10px] text-muted-foreground mt-0.5 leading-snug">{f.detail}</div>
+        </div>
+        <div className="pt-0.5"><FixStatusPill status={f.status} /></div>
+        <div className="pt-1 text-[10px] text-muted-foreground truncate">
+          {f.fix?.generatedBy ?? (isManual ? "Manual" : "—")}
+        </div>
+        <div className="flex flex-wrap justify-end gap-1 pt-0.5">
+          <button onClick={() => setOpen((o) => !o)}
+            className="px-1.5 py-1 rounded border border-border hover:bg-accent/30 text-[10px] flex items-center gap-1"
+            title={open ? "Collapse" : "Expand details"}>
+            {open ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+          </button>
           {canAutoFix && (
             <button onClick={() => autoFix(f.id)}
               className="px-2 py-1 rounded border border-primary/40 text-primary hover:bg-primary/10 text-[10px] flex items-center gap-1">
-              <Zap className="w-3 h-3" /> Auto-fix
+              <Zap className="w-3 h-3" /> Fix
             </button>
           )}
           {isPending && (
@@ -518,18 +535,54 @@ function FailureRow({ f, checked, onCheck, selectable }: { f: Failure; checked: 
           )}
         </div>
       </div>
-      {open && f.fix && (
-        <div className="px-5 pb-3 pt-1 bg-background/40 space-y-2">
-          <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest text-muted-foreground">
-            <span>Eval</span>
-            <span className="text-sev-low">Grounding {f.fix.groundingScore}/100</span>
-            <span className="text-sev-low">Hallucination {f.fix.hallucinationScore}/100</span>
-            <span className="text-muted-foreground">·</span>
-            <span className="text-foreground/70 normal-case tracking-normal truncate" title={f.fix.reasoning}>
-              {f.fix.reasoning}
-            </span>
-          </div>
-          <DiffPane before={f.fix.before} after={f.fix.after} pillar={f.pillar} maxHeight={200} />
+
+      {open && (
+        <div className="mx-5 mb-3 rounded border border-border bg-background/60 overflow-hidden">
+          {isManual ? (
+            <div className="px-4 py-3 space-y-1.5">
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+                <AlertCircle className="w-3 h-3" /> Manual action required
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                No automated fix is available for this issue — it requires a change you make directly in your store or CMS.
+                Once resolved, you can acknowledge it from the Review Queue.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2 p-3">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] uppercase tracking-widest text-muted-foreground">
+                <span>Eval gate</span>
+                {isEvalFailed ? (
+                  <>
+                    {(["factPreservation", "semanticDensity", "structuralSyntax", "objectAccuracy"] as const).map((key) => {
+                      const score = f.fix!.evalScores[key];
+                      const threshold = evalThresholds[key];
+                      const pass = score >= threshold;
+                      const label = key === "factPreservation" ? "Fact Pres" : key === "semanticDensity" ? "Sem Density" : key === "structuralSyntax" ? "Struct Syntax" : "Obj Accuracy";
+                      return (
+                        <span key={key} className={`flex items-center gap-1 ${pass ? "text-sev-low" : "text-sev-critical font-semibold"}`}>
+                          {!pass && <AlertCircle className="w-2.5 h-2.5" />}
+                          {label} {score}%{!pass && <span className="font-normal opacity-70">(min {threshold}%)</span>}
+                        </span>
+                      );
+                    })}
+                    <span className="normal-case tracking-normal text-sev-critical">
+                      Adjust thresholds in Settings → Eval gate, or wait for regeneration
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-sev-low">Grounding {f.fix!.groundingScore}/100</span>
+                    <span className="text-sev-low">Hallucination risk {f.fix!.hallucinationScore}/100</span>
+                    <span className="text-foreground/60 normal-case tracking-normal truncate max-w-xs" title={f.fix!.reasoning}>
+                      {f.fix!.reasoning}
+                    </span>
+                  </>
+                )}
+              </div>
+              <DiffPane before={f.fix!.before} after={f.fix!.after} pillar={f.pillar} maxHeight={200} />
+            </div>
+          )}
         </div>
       )}
     </div>
