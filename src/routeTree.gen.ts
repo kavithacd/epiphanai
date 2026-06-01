@@ -16,6 +16,7 @@ import { Route as MonitoringRouteImport } from './routes/monitoring'
 import { Route as ImpactRouteImport } from './routes/impact'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as BrandVoiceRouteImport } from './routes/brand-voice'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -54,6 +55,11 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BrandVoiceRoute = BrandVoiceRouteImport.update({
+  id: '/brand-voice',
+  path: '/brand-voice',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -68,6 +74,7 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/brand-voice': typeof BrandVoiceRoute
   '/dashboard': typeof DashboardRoute
   '/history': typeof HistoryRoute
   '/impact': typeof ImpactRoute
@@ -79,6 +86,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/brand-voice': typeof BrandVoiceRoute
   '/dashboard': typeof DashboardRoute
   '/history': typeof HistoryRoute
   '/impact': typeof ImpactRoute
@@ -91,6 +99,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/brand-voice': typeof BrandVoiceRoute
   '/dashboard': typeof DashboardRoute
   '/history': typeof HistoryRoute
   '/impact': typeof ImpactRoute
@@ -104,6 +113,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/brand-voice'
     | '/dashboard'
     | '/history'
     | '/impact'
@@ -115,6 +125,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admin'
+    | '/brand-voice'
     | '/dashboard'
     | '/history'
     | '/impact'
@@ -126,6 +137,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/brand-voice'
     | '/dashboard'
     | '/history'
     | '/impact'
@@ -138,6 +150,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  BrandVoiceRoute: typeof BrandVoiceRoute
   DashboardRoute: typeof DashboardRoute
   HistoryRoute: typeof HistoryRoute
   ImpactRoute: typeof ImpactRoute
@@ -198,6 +211,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/brand-voice': {
+      id: '/brand-voice'
+      path: '/brand-voice'
+      fullPath: '/brand-voice'
+      preLoaderRoute: typeof BrandVoiceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin': {
       id: '/admin'
       path: '/admin'
@@ -218,6 +238,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  BrandVoiceRoute: BrandVoiceRoute,
   DashboardRoute: DashboardRoute,
   HistoryRoute: HistoryRoute,
   ImpactRoute: ImpactRoute,
