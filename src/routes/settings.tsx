@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { useEpiphan, EVAL_THRESHOLD_META } from "@/lib/epiphan-store";
 import { resolveProbeQuery, ProductContext } from "@/lib/epiphan-data";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Save, Webhook, Slack as SlackIcon, ShoppingBag, Globe, Database, Layers, Zap, ShieldCheck, Radio, Trash2, Plus, X, CheckCircle2 } from "lucide-react";
 import { IntegrationConfig } from "@/lib/epiphan-export";
 
@@ -37,6 +37,23 @@ function Settings() {
   const [competitorInput, setCompetitorInput] = useState("");
   const [localCompetitors, setLocalCompetitors] = useState<string[]>(brandMonitorConfig.competitors);
   const [brandSaved, setBrandSaved] = useState(false);
+
+  useEffect(() => {
+    setBrandInput(brandMonitorConfig.brandName || brandMonitorConfig.productUrl);
+    setLocalCompetitors(brandMonitorConfig.competitors);
+  }, [brandMonitorConfig]);
+
+  const savedBrandInput = brandMonitorConfig.brandName || brandMonitorConfig.productUrl;
+  const isBrandDirty =
+    brandInput !== savedBrandInput ||
+    localCompetitors.length !== brandMonitorConfig.competitors.length ||
+    localCompetitors.some((c, i) => c !== brandMonitorConfig.competitors[i]);
+
+  function resetBrandForm() {
+    setBrandInput(savedBrandInput);
+    setLocalCompetitors(brandMonitorConfig.competitors);
+    setCompetitorInput("");
+  }
 
   const upd = <K extends keyof IntegrationConfig>(k: K) =>
     (v: IntegrationConfig[K]) => setIntegration(k, v);
@@ -249,23 +266,34 @@ function Settings() {
                 {probeQueries.filter((q) => q.enabled).length} queries · {probeEngines.filter((e) => e.enabled).length} engines
               </Link>
             </div>
-            <button
-              onClick={() => {
-                const isUrl = brandInput.startsWith("http") || brandInput.includes(".");
-                setBrandMonitorConfig({
-                  configured: !!brandInput.trim(),
-                  brandName: isUrl ? "" : brandInput.trim(),
-                  productUrl: isUrl ? brandInput.trim() : "",
-                  competitors: localCompetitors,
-                });
-                setBrandSaved(true);
-                setTimeout(() => setBrandSaved(false), 1800);
-              }}
-              disabled={!brandInput.trim()}
-              className="px-4 py-2 rounded bg-primary text-primary-foreground text-xs flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <Save className="w-3 h-3" /> {brandSaved ? "Saved!" : "Save"}
-            </button>
+            <div className="flex items-center gap-2">
+              {isBrandDirty && (
+                <button
+                  onClick={resetBrandForm}
+                  className="px-3 py-2 rounded border border-border text-xs text-muted-foreground hover:text-foreground hover:border-primary transition-colors"
+                >
+                  Reset
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  const isUrl = brandInput.startsWith("http") || brandInput.includes(".");
+                  const next = {
+                    configured: !!brandInput.trim(),
+                    brandName: isUrl ? "" : brandInput.trim(),
+                    productUrl: isUrl ? brandInput.trim() : "",
+                    competitors: localCompetitors,
+                  };
+                  setBrandMonitorConfig(next);
+                  setBrandSaved(true);
+                  setTimeout(() => setBrandSaved(false), 1800);
+                }}
+                disabled={!brandInput.trim()}
+                className="px-4 py-2 rounded bg-primary text-primary-foreground text-xs flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Save className="w-3 h-3" /> {brandSaved ? "Saved!" : "Save"}
+              </button>
+            </div>
           </div>
         </section>
 
