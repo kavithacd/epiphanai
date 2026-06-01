@@ -502,7 +502,7 @@ function FailureRow({ f, checked, onCheck, selectable }: { f: Failure; checked: 
 
   const disabledTitle = !selectable
     ? isManual ? "No automated fix available — expand for manual action guidance"
-    : isEvalFailed ? "Fix failed the eval gate — expand to see which metrics missed the threshold"
+    : isEvalFailed ? "Fix failed AI quality checks — expand to see exactly which scores missed your thresholds"
     : f.status === "deployed" ? "Already healed"
     : f.status === "rejected" ? "Fix was rejected"
     : undefined
@@ -574,9 +574,9 @@ function FailureRow({ f, checked, onCheck, selectable }: { f: Failure; checked: 
             </div>
           ) : (
             <div className="space-y-0">
-              {/* Eval gate header */}
+              {/* Quality gate header */}
               <div className="px-3 pt-3 pb-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border">
-                <span>Eval gate</span>
+                <span>AI quality checks</span>
                 {isEvalFailed ? (
                   <>
                     {(["factPreservation", "semanticDensity", "structuralSyntax", "objectAccuracy"] as const).map((key) => {
@@ -592,7 +592,7 @@ function FailureRow({ f, checked, onCheck, selectable }: { f: Failure; checked: 
                       );
                     })}
                     <span className="normal-case tracking-normal text-sev-critical">
-                      Lower thresholds in Settings → Eval gate to unblock, or edit the fix below
+                      These are the scores that blocked deployment — lower your thresholds in <a href="/settings" className="underline">Settings → Eval gate</a>, or edit the fix below to improve them
                     </span>
                   </>
                 ) : (
@@ -685,7 +685,7 @@ function FailureRow({ f, checked, onCheck, selectable }: { f: Failure; checked: 
                       </button>
                       {isEvalFailed && (
                         <span className="text-[10px] text-muted-foreground ml-1">
-                          Approving overrides the eval gate — use with caution
+                          The failed scores are shown above — approving deploys the fix as-is, bypassing those checks
                         </span>
                       )}
                     </>
