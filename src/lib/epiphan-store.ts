@@ -148,6 +148,13 @@ export type ProbeEngine = {
   enabled: boolean;
 };
 
+export type BrandMonitorConfig = {
+  configured: boolean;
+  brandName: string;
+  productUrl: string;
+  competitors: string[];
+};
+
 export const DEFAULT_PROBE_QUERIES: ProbeQuery[] = [
   { id: "pq-01", text: "Is {{brand}} recommended by AI assistants for {{category}} in Europe?", enabled: true },
   { id: "pq-02", text: "Best {{category}} brands recommended by ChatGPT and Gemini in 2025", enabled: true },
@@ -191,6 +198,7 @@ interface State {
   evalThresholds: EvalThresholds;
   probeQueries: ProbeQuery[];
   probeEngines: ProbeEngine[];
+  brandMonitorConfig: BrandMonitorConfig;
   startAudit: (url: string) => string;
   approveFix: (failureId: string) => void;
   bulkApprove: (failureIds: string[]) => void;
@@ -210,6 +218,7 @@ interface State {
   updateProbeQuery: (id: string, text: string) => void;
   toggleProbeQuery: (id: string) => void;
   toggleProbeEngine: (id: string) => void;
+  setBrandMonitorConfig: (config: Partial<BrandMonitorConfig>) => void;
   pushToPlatform: (failureIds: string[], platform: PlatformId) => void;
   notifySlackCritical: (failureRecordId: string) => void;
 }
@@ -279,6 +288,12 @@ export const useEpiphan = create<State>()(persist((set, get) => ({
   },
   probeQueries: DEFAULT_PROBE_QUERIES,
   probeEngines: DEFAULT_PROBE_ENGINES,
+  brandMonitorConfig: {
+    configured: false,
+    brandName: "",
+    productUrl: "",
+    competitors: [],
+  },
 
   getAudit: (id) => get().audits.find((a) => a.id === id),
 
@@ -324,6 +339,12 @@ export const useEpiphan = create<State>()(persist((set, get) => ({
   toggleProbeEngine: (id) => {
     set((s): Partial<State> => ({
       probeEngines: s.probeEngines.map((e) => e.id === id ? { ...e, enabled: !e.enabled } : e),
+    }));
+  },
+
+  setBrandMonitorConfig: (config) => {
+    set((s): Partial<State> => ({
+      brandMonitorConfig: { ...s.brandMonitorConfig, ...config },
     }));
   },
 
@@ -743,6 +764,9 @@ export const useEpiphan = create<State>()(persist((set, get) => ({
     totalCostUsd: state.totalCostUsd,
     autoDeployEnabled: state.autoDeployEnabled,
     evalThresholds: state.evalThresholds,
+    probeQueries: state.probeQueries,
+    probeEngines: state.probeEngines,
+    brandMonitorConfig: state.brandMonitorConfig,
   }),
 }));
 

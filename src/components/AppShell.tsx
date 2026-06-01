@@ -63,18 +63,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
             {NAV.find((n) => loc.pathname.startsWith(n.to))?.label ?? "epiphanAI"}
           </div>
-          <button
-            onClick={() => {
-              navigate({ to: "/dashboard" });
-              setTimeout(() => {
-                window.scrollTo({ top: 0, behavior: "smooth" });
-                document.getElementById("epiphan-audit-url")?.focus();
-              }, 80);
-            }}
-            className="px-3 py-1.5 rounded bg-primary text-primary-foreground hover:opacity-90 text-[11px] flex items-center gap-1.5 font-medium"
-          >
-            <Plus className="w-3 h-3" /> New audit
-          </button>
+          {!loc.pathname.startsWith("/monitoring") && (
+            <button
+              onClick={() => {
+                navigate({ to: "/dashboard" });
+                setTimeout(() => {
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                  document.getElementById("epiphan-audit-url")?.focus();
+                }, 80);
+              }}
+              className="px-3 py-1.5 rounded bg-primary text-primary-foreground hover:opacity-90 text-[11px] flex items-center gap-1.5 font-medium"
+            >
+              <Plus className="w-3 h-3" /> New audit
+            </button>
+          )}
         </header>
         <div className="flex-1 min-w-0">{children}</div>
       </main>

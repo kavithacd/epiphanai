@@ -253,12 +253,40 @@ function BrandMonitoring() {
   const audits = useEpiphan((s) => s.audits);
   const probeEngines = useEpiphan((s) => s.probeEngines);
   const probeQueries = useEpiphan((s) => s.probeQueries);
+  const brandMonitorConfig = useEpiphan((s) => s.brandMonitorConfig);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportSections, setExportSections] = useState<ExportSections>({ sov: true, sentiment: true, competitors: true, queries: true });
   const [copyToast, setCopyToast] = useState(false);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+
+  // Gate: setup not complete
+  if (!brandMonitorConfig.configured) {
+    return (
+      <AppShell>
+        <div className="max-w-[1400px] mx-auto p-8 space-y-6">
+          <header>
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Brand Intelligence</div>
+            <h1 className="text-2xl font-sans font-medium mt-1">Brand Monitoring</h1>
+          </header>
+          <div className="border border-border rounded-lg bg-surface p-16 text-center space-y-4">
+            <Radio className="w-8 h-8 text-muted-foreground mx-auto" />
+            <p className="text-foreground text-sm font-medium">Set up brand monitoring to see your dashboard</p>
+            <p className="text-muted-foreground text-xs max-w-sm mx-auto">
+              Define your brand and competitors in Settings to activate Share of Voice tracking, sentiment analysis, and competitor citations.
+            </p>
+            <a
+              href="/settings#brand-monitoring"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity"
+            >
+              Go to Brand Monitoring Setup
+            </a>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
 
   // Empty state: no audits at all
   if (audits.length === 0) {
@@ -292,7 +320,7 @@ function BrandMonitoring() {
   const f52 = audit.failures.find((f) => f.failureId === "F5.2");
   const f52Detail = f52?.detail ?? null;
 
-  const brand = audit.ctx?.brand ?? audit.storeName;
+  const brand = brandMonitorConfig.brandName || audit.ctx?.brand || audit.storeName;
   const industry = audit.ctx?.industry ?? "E-commerce";
 
   const competitors = useMemo(() =>
