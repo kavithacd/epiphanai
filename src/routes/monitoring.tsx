@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useEpiphan } from "@/lib/epiphan-store";
 import { mulberry32, hashStr, seededInt, resolveProbeQuery } from "@/lib/epiphan-data";
-import { Radio, ChevronDown, ExternalLink } from "lucide-react";
+import { Radio, ChevronDown, ExternalLink, Download } from "lucide-react";
 
 export const Route = createFileRoute("/monitoring")({
   head: () => ({ meta: [{ title: "Brand Monitoring · epiphanAI" }] }),
@@ -137,6 +137,81 @@ function LegendDot({ color, label }: { color: string; label: string }) {
   );
 }
 
+function escapeCSV(value: string | number): string {
+  const str = String(value);
+  if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+function buildCSV(params: {
+  brand: string;
+  industry: string;
+  storeName: string;
+  enabledEngines: { id: string; label: string }[];
+  probeTotal: number;
+  sovByEngine: Record<string, { brandCited: number; competitorCited: number }>;
+  sentimentByEngine: Record<string, { positive: number; neutral: number; negative: number }>;
+  competitors: { name: string; perEngine: Record<string, number>; total: number }[];
+  resolvedQueries: string[];
+}): string {
+  const { brand, industry, storeName, enabledEngines, probeTotal, sovByEngine, sentimentByEngine, competitors, resolvedQueries } = params;
+  const rows: string[] = [];
+
+  rows.push("# epiphanAI Brand Monitoring Report");
+  rows.push(`Brand,${escapeCSV(brand)}`);
+  rows.push(`Industry,${escapeCSV(industry)}`);
+  rows.push(`Store,${escapeCSV(storeName)}`);
+  rows.push(`Report Date,${new Date().toLocaleDateString()}`);
+  rows.push("");
+
+  rows.push("## Share of Voice");
+  rows.push(["Engine", "Brand SoV %", "Brand Cited", "Competitor Cited", "Total Probes"].map(escapeCSV).join(","));
+  for (const engine of enabledEngines) {
+    const { brandCited, competitorCited } = sovByEngine[engine.id] ?? { brandCited: 0, competitorCited: 0 };
+    const brandPct = probeTotal > 0 ? Math.round((brandCited / probeTotal) * 100) : 0;
+    rows.push([engine.label, `${brandPct}%`, brandCited, competitorCited, probeTotal].map(escapeCSV).join(","));
+  }
+  rows.push("");
+
+  rows.push("## Sentiment Breakdown");
+  rows.push(["Engine", "Positive %", "Neutral %", "Negative %"].map(escapeCSV).join(","));
+  for (const engine of enabledEngines) {
+    const { positive, neutral, negative } = sentimentByEngine[engine.id];
+    rows.push([engine.label, `${positive}%`, `${neutral}%`, `${negative}%`].map(escapeCSV).join(","));
+  }
+  rows.push("");
+
+  rows.push("## Competitor Citations");
+  const compHeaders = ["Competitor", ...enabledEngines.map((e) => e.label), "Total Citations", `vs ${brand}`];
+  rows.push(compHeaders.map(escapeCSV).join(","));
+
+  const brandTotalCited = enabledEngines.reduce((s, e) => s + (sovByEngine[e.id]?.brandCited ?? 0), 0);
+  const brandRowCols = [brand, ...enabledEngines.map((e) => String(sovByEngine[e.id]?.brandCited ?? 0)), String(brandTotalCited), "—"];
+  rows.push(brandRowCols.map(escapeCSV).join(","));
+
+  for (const comp of competitors) {
+    const delta = comp.total - brandTotalCited;
+    const cols = [
+      comp.name,
+      ...enabledEngines.map((e) => String(comp.perEngine[e.id] ?? 0)),
+      String(comp.total),
+      delta > 0 ? `+${delta}` : String(delta),
+    ];
+    rows.push(cols.map(escapeCSV).join(","));
+  }
+  rows.push("");
+
+  rows.push("## Active Probe Queries");
+  rows.push(["#", "Query"].map(escapeCSV).join(","));
+  resolvedQueries.forEach((q, i) => {
+    rows.push([i + 1, q].map(escapeCSV).join(","));
+  });
+
+  return rows.join("\n");
+}
+
 function BrandMonitoring() {
   const audits = useEpiphan((s) => s.audits);
   const probeEngines = useEpiphan((s) => s.probeEngines);
@@ -214,6 +289,30 @@ function BrandMonitoring() {
   const brandTotalCited = enabledEngines.reduce((s, e) => s + (sovByEngine[e.id]?.brandCited ?? 0), 0);
   const brandTotalProbes = enabledEngines.reduce((s, e) => s + probeTotal, 0);
 
+  function handleExportCSV() {
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const safeName = (audit.storeName ?? "store").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    const filename = `${safeName}-monitoring-${dateStr}.csv`;
+    const csv = buildCSV({
+      brand,
+      industry,
+      storeName: audit.storeName,
+      enabledEngines,
+      probeTotal,
+      sovByEngine,
+      sentimentByEngine,
+      competitors,
+      resolvedQueries,
+    });
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <AppShell>
       <div className="max-w-[1400px] mx-auto p-8 space-y-6">
@@ -229,22 +328,31 @@ function BrandMonitoring() {
             </p>
           </div>
 
-          {audits.length > 1 && (
-            <div className="relative">
-              <select
-                className="appearance-none text-xs bg-surface border border-border rounded px-3 py-1.5 pr-7 text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 cursor-pointer"
-                value={audit.id}
-                onChange={(e) => setSelectedId(e.target.value)}
-              >
-                {audits.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.storeName} — {new Date(a.createdAt).toLocaleDateString()}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-3 h-3 text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {audits.length > 1 && (
+              <div className="relative">
+                <select
+                  className="appearance-none text-xs bg-surface border border-border rounded px-3 py-1.5 pr-7 text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 cursor-pointer"
+                  value={audit.id}
+                  onChange={(e) => setSelectedId(e.target.value)}
+                >
+                  {audits.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.storeName} — {new Date(a.createdAt).toLocaleDateString()}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-3 h-3 text-muted-foreground absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+            )}
+            <button
+              onClick={handleExportCSV}
+              className="flex items-center gap-1.5 text-xs bg-surface border border-border rounded px-3 py-1.5 text-foreground hover:bg-accent/30 transition-colors cursor-pointer"
+            >
+              <Download className="w-3 h-3" />
+              Export CSV
+            </button>
+          </div>
         </header>
 
         {/* SoV gauges */}
