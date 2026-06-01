@@ -1,10 +1,11 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { Activity, Inbox, History, Shield, Settings as Cog, Sparkles, Plus, TrendingUp } from "lucide-react";
+import { Activity, Inbox, History, Shield, Settings as Cog, Sparkles, Plus, TrendingUp, Radio } from "lucide-react";
 import { useEpiphan } from "@/lib/epiphan-store";
 
 const NAV = [
   { to: "/dashboard", label: "Audit Engine", icon: Activity },
   { to: "/review", label: "Review Queue", icon: Inbox },
+  { to: "/monitoring", label: "Brand Monitoring", icon: Radio },
   { to: "/impact", label: "Fix Impact", icon: TrendingUp },
   { to: "/history", label: "Audit History", icon: History },
   { to: "/admin", label: "Admin Cockpit", icon: Shield },
@@ -81,4 +82,3 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
-
