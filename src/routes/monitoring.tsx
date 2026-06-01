@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useEpiphan } from "@/lib/epiphan-store";
 import { mulberry32, hashStr, seededInt, resolveProbeQuery } from "@/lib/epiphan-data";
-import { Radio, ChevronDown, ExternalLink, Download, X, Copy, Check } from "lucide-react";
+import { Radio, ChevronDown, ChevronRight, ExternalLink, Download, X, Copy, Check } from "lucide-react";
 
 export const Route = createFileRoute("/monitoring")({
   head: () => ({ meta: [{ title: "Brand Monitoring · epiphanAI" }] }),
@@ -77,6 +77,25 @@ function buildCompetitorList(
     }
     return { name, perEngine, total };
   }).sort((a, b) => b.total - a.total);
+}
+
+// For a given competitor + engine, deterministically pick which query indices were cited.
+// Uses a seeded Fisher-Yates shuffle so results are stable per audit.
+function deriveQueriesForCompEngine(
+  compName: string,
+  auditId: string,
+  engineId: string,
+  totalCited: number,
+  queryCount: number,
+): number[] {
+  if (totalCited <= 0 || queryCount === 0) return [];
+  const rng = mulberry32(hashStr(auditId + compName + engineId + "querymap"));
+  const indices = Array.from({ length: queryCount }, (_, i) => i);
+  for (let i = indices.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [indices[i], indices[j]] = [indices[j], indices[i]];
+  }
+  return indices.slice(0, Math.min(totalCited, queryCount)).sort((a, b) => a - b);
 }
 
 function deriveSentiment(
@@ -239,6 +258,7 @@ function BrandMonitoring() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportSections, setExportSections] = useState<ExportSections>({ sov: true, sentiment: true, competitors: true, queries: true });
   const [copyToast, setCopyToast] = useState(false);
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
   // Empty state: no audits at all
   if (audits.length === 0) {
@@ -284,6 +304,21 @@ function BrandMonitoring() {
     if (!audit?.ctx) return probeQueries.filter((q) => q.enabled).map((q) => q.text);
     return probeQueries.filter((q) => q.enabled).map((q) => resolveProbeQuery(q.text, audit.ctx!));
   }, [audit, probeQueries]);
+
+  // For each competitor × engine, the set of query indices that cited them (seeded, stable)
+  const compQueryCitations = useMemo(() => {
+    const result: Record<string, Record<string, number[]>> = {};
+    for (const comp of competitors) {
+      result[comp.name] = {};
+      for (const engine of enabledEngines) {
+        const cited = comp.perEngine[engine.id] ?? 0;
+        result[comp.name][engine.id] = deriveQueriesForCompEngine(
+          comp.name, audit.id, engine.id, cited, resolvedQueries.length,
+        );
+      }
+    }
+    return result;
+  }, [competitors, enabledEngines, audit.id, resolvedQueries.length]);
 
   // Seeded SoV per engine
   const sovByEngine = useMemo(() =>
@@ -553,68 +588,162 @@ function BrandMonitoring() {
           </div>
 
           {/* Brand row — pinned at top */}
-          <div
-            className="grid gap-3 px-5 py-2.5 items-center border-t border-border bg-primary/5"
-            style={{ gridTemplateColumns: `1fr ${enabledEngines.map(() => "80px").join(" ")} 80px 120px` }}
-          >
-            <div className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-              <span className="text-xs text-primary font-medium">{brand}</span>
-              <span className="text-[9px] text-muted-foreground uppercase tracking-widest border border-border px-1 py-0.5 rounded">you</span>
-            </div>
-            {enabledEngines.map((engine) => {
-              const { brandCited } = sovByEngine[engine.id] ?? { brandCited: 0 };
-              return (
-                <div key={engine.id} className="text-center text-xs tabular-nums text-foreground">
-                  {brandCited}/{probeTotal}
+          <div className="border-t border-border">
+            <button
+              type="button"
+              onClick={() => setExpandedRow(expandedRow === "__brand__" ? null : "__brand__")}
+              className="w-full text-left"
+            >
+              <div
+                className="grid gap-3 px-5 py-2.5 items-center bg-primary/5 hover:bg-primary/10 transition-colors cursor-pointer"
+                style={{ gridTemplateColumns: `1fr ${enabledEngines.map(() => "80px").join(" ")} 80px 120px` }}
+              >
+                <div className="flex items-center gap-2">
+                  {expandedRow === "__brand__"
+                    ? <ChevronDown className="w-3 h-3 text-primary shrink-0" />
+                    : <ChevronRight className="w-3 h-3 text-primary shrink-0" />}
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                  <span className="text-xs text-primary font-medium">{brand}</span>
+                  <span className="text-[9px] text-muted-foreground uppercase tracking-widest border border-border px-1 py-0.5 rounded">you</span>
                 </div>
-              );
-            })}
-            <div className="text-center text-xs tabular-nums text-foreground">
-              {brandTotalCited}/{brandTotalProbes}
-            </div>
-            <div className="text-right">
-              <span className="text-[10px] px-1.5 py-0.5 rounded text-muted-foreground">—</span>
-            </div>
+                {enabledEngines.map((engine) => {
+                  const { brandCited } = sovByEngine[engine.id] ?? { brandCited: 0 };
+                  return (
+                    <div key={engine.id} className="text-center text-xs tabular-nums text-foreground">
+                      {brandCited}/{probeTotal}
+                    </div>
+                  );
+                })}
+                <div className="text-center text-xs tabular-nums text-foreground">
+                  {brandTotalCited}/{brandTotalProbes}
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded text-muted-foreground">—</span>
+                </div>
+              </div>
+            </button>
+            {expandedRow === "__brand__" && (
+              <div className="border-t border-border bg-background/60 px-5 py-4 space-y-2">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-3">
+                  Queries where <span className="text-primary">{brand}</span> was not cited — {resolvedQueries.length} absent
+                </div>
+                {resolvedQueries.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No active probe queries.</p>
+                ) : (
+                  <div className="space-y-1">
+                    {resolvedQueries.map((q, i) => (
+                      <div key={i} className="flex items-start gap-3 py-1.5 px-3 rounded bg-surface/80 border border-border/60">
+                        <span className="text-[10px] tabular-nums text-muted-foreground w-5 shrink-0 pt-0.5">{i + 1}</span>
+                        <span className="text-xs text-foreground leading-relaxed flex-1">{q}</span>
+                        <div className="flex items-center gap-1 shrink-0 pt-0.5">
+                          {enabledEngines.map((e) => (
+                            <span
+                              key={e.id}
+                              className="text-[9px] px-1.5 py-0.5 rounded uppercase tracking-wide font-medium"
+                              style={{ color: ENGINE_COLOR[e.id] ?? "var(--muted-foreground)", background: (ENGINE_COLOR[e.id] ?? "#888") + "18" }}
+                            >
+                              {e.label}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Competitor rows */}
           {competitors.map((comp, idx) => {
             const delta = comp.total - brandTotalCited;
+            const isExpanded = expandedRow === comp.name;
+            const citations = compQueryCitations[comp.name] ?? {};
+
+            // Build per-query engine sets: queryEngines[i] = engines that cited comp for query i
+            const queryEngines: Record<number, string[]> = {};
+            for (const engine of enabledEngines) {
+              for (const qi of (citations[engine.id] ?? [])) {
+                if (!queryEngines[qi]) queryEngines[qi] = [];
+                queryEngines[qi].push(engine.id);
+              }
+            }
+            const citedQueryIndices = Object.keys(queryEngines).map(Number).sort((a, b) => a - b);
+
             return (
-              <div
-                key={comp.name}
-                className="grid gap-3 px-5 py-2.5 items-center border-t border-border hover:bg-accent/20"
-                style={{ gridTemplateColumns: `1fr ${enabledEngines.map(() => "80px").join(" ")} 80px 120px` }}
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] tabular-nums font-medium w-4 text-muted-foreground">{idx + 1}</span>
-                  <span className="text-xs text-foreground">{comp.name}</span>
-                </div>
-                {enabledEngines.map((engine) => {
-                  const cited = comp.perEngine[engine.id] ?? 0;
-                  const color = ENGINE_COLOR[engine.id] ?? "var(--foreground)";
-                  return (
-                    <div key={engine.id} className="text-center text-xs tabular-nums"
-                      style={{ color: cited > 0 ? color : "var(--muted-foreground)" }}>
-                      {cited}/{probeTotal}
-                    </div>
-                  );
-                })}
-                <div className="text-center text-xs tabular-nums font-medium text-foreground">{comp.total}</div>
-                <div className="text-right">
-                  <span
-                    className="text-[10px] tabular-nums px-1.5 py-0.5 rounded"
-                    style={{
-                      color: delta > 0 ? "var(--sev-high)" : "var(--sev-low)",
-                      background: delta > 0
-                        ? "color-mix(in oklab, var(--sev-high) 12%, transparent)"
-                        : "color-mix(in oklab, var(--sev-low) 12%, transparent)",
-                    }}
+              <div key={comp.name} className="border-t border-border">
+                <button
+                  type="button"
+                  onClick={() => setExpandedRow(isExpanded ? null : comp.name)}
+                  className="w-full text-left"
+                >
+                  <div
+                    className="grid gap-3 px-5 py-2.5 items-center hover:bg-accent/20 transition-colors cursor-pointer"
+                    style={{ gridTemplateColumns: `1fr ${enabledEngines.map(() => "80px").join(" ")} 80px 120px` }}
                   >
-                    {delta > 0 ? `+${delta}` : delta} citations
-                  </span>
-                </div>
+                    <div className="flex items-center gap-2">
+                      {isExpanded
+                        ? <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0" />
+                        : <ChevronRight className="w-3 h-3 text-muted-foreground shrink-0" />}
+                      <span className="text-[10px] tabular-nums font-medium w-4 text-muted-foreground">{idx + 1}</span>
+                      <span className="text-xs text-foreground">{comp.name}</span>
+                    </div>
+                    {enabledEngines.map((engine) => {
+                      const cited = comp.perEngine[engine.id] ?? 0;
+                      const color = ENGINE_COLOR[engine.id] ?? "var(--foreground)";
+                      return (
+                        <div key={engine.id} className="text-center text-xs tabular-nums"
+                          style={{ color: cited > 0 ? color : "var(--muted-foreground)" }}>
+                          {cited}/{probeTotal}
+                        </div>
+                      );
+                    })}
+                    <div className="text-center text-xs tabular-nums font-medium text-foreground">{comp.total}</div>
+                    <div className="text-right">
+                      <span
+                        className="text-[10px] tabular-nums px-1.5 py-0.5 rounded"
+                        style={{
+                          color: delta > 0 ? "var(--sev-high)" : "var(--sev-low)",
+                          background: delta > 0
+                            ? "color-mix(in oklab, var(--sev-high) 12%, transparent)"
+                            : "color-mix(in oklab, var(--sev-low) 12%, transparent)",
+                        }}
+                      >
+                        {delta > 0 ? `+${delta}` : delta} citations
+                      </span>
+                    </div>
+                  </div>
+                </button>
+                {isExpanded && (
+                  <div className="border-t border-border bg-background/60 px-5 py-4 space-y-2">
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-3">
+                      Queries citing <span className="text-foreground font-medium">{comp.name}</span> — {citedQueryIndices.length} of {resolvedQueries.length}
+                    </div>
+                    {citedQueryIndices.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">No queries triggered a citation for this competitor.</p>
+                    ) : (
+                      <div className="space-y-1">
+                        {citedQueryIndices.map((qi) => (
+                          <div key={qi} className="flex items-start gap-3 py-1.5 px-3 rounded bg-surface/80 border border-border/60">
+                            <span className="text-[10px] tabular-nums text-muted-foreground w-5 shrink-0 pt-0.5">{qi + 1}</span>
+                            <span className="text-xs text-foreground leading-relaxed flex-1">{resolvedQueries[qi]}</span>
+                            <div className="flex items-center gap-1 shrink-0 pt-0.5">
+                              {(queryEngines[qi] ?? []).map((eid) => (
+                                <span
+                                  key={eid}
+                                  className="text-[9px] px-1.5 py-0.5 rounded uppercase tracking-wide font-medium"
+                                  style={{ color: ENGINE_COLOR[eid] ?? "var(--muted-foreground)", background: (ENGINE_COLOR[eid] ?? "#888") + "18" }}
+                                >
+                                  {probeEngines.find((e) => e.id === eid)?.label ?? eid}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
