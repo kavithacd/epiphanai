@@ -6,7 +6,7 @@ import { DiffPane } from "@/components/DiffPane";
 import { useEpiphan } from "@/lib/epiphan-store";
 import { PILLARS, PillarId, SEVERITY_WEIGHT, Failure } from "@/lib/epiphan-data";
 import { toCsv, toJson, downloadFile, copyToClipboard, toWebhookPayload } from "@/lib/epiphan-export";
-import { Play, Loader2, CheckCircle2, ArrowRight, Zap, Eye, EyeOff, FileText, FileJson, Copy, Check, AlertCircle } from "lucide-react";
+import { Play, Loader2, CheckCircle2, ArrowRight, Zap, Eye, EyeOff, FileText, FileJson, Copy, Check, AlertCircle, Pencil, X } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { toast } from "sonner";
 
@@ -481,11 +481,22 @@ function StorePreview({ audit }: { audit: ReturnType<typeof useEpiphan.getState>
 
 function FailureRow({ f, checked, onCheck, selectable }: { f: Failure; checked: boolean; onCheck: () => void; selectable: boolean }) {
   const autoFix = useEpiphan((s) => s.autoFix);
+  const approveFix = useEpiphan((s) => s.approveFix);
+  const rejectFix = useEpiphan((s) => s.rejectFix);
+  const editFix = useEpiphan((s) => s.editFix);
   const evalThresholds = useEpiphan((s) => s.evalThresholds);
+
   const isManual = !f.fix;
   const isEvalFailed = f.status === "eval_failed";
-  // Default open: always show detail for manual/eval-failed rows; show diff for fix rows
+  const isTerminal = ["deployed", "rejected", "rolled_back"].includes(f.status);
+  const canApproveReject = !!f.fix && !isTerminal;
+
   const [open, setOpen] = useState(true);
+  const [editMode, setEditMode] = useState(false);
+  const [draft, setDraft] = useState(f.fix?.after ?? "");
+  const [rejectPending, setRejectPending] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+
   const canAutoFix = f.fix && (f.status === "eval_passed" || f.status === "detected");
   const isPending = f.status === "review_pending";
 
@@ -496,6 +507,18 @@ function FailureRow({ f, checked, onCheck, selectable }: { f: Failure; checked: 
     : f.status === "rejected" ? "Fix was rejected"
     : undefined
     : undefined;
+
+  function handleApprove() {
+    if (editMode && draft !== f.fix?.after) editFix(f.id, draft);
+    approveFix(f.id);
+    setEditMode(false);
+  }
+
+  function handleRejectConfirm() {
+    rejectFix(f.id, rejectReason || "Rejected by reviewer");
+    setRejectPending(false);
+    setRejectReason("");
+  }
 
   return (
     <div className={`border-b border-border last:border-b-0 ${checked ? "bg-primary/5" : ""} ${isEvalFailed ? "border-l-2 border-l-sev-critical/40" : ""}`}>
@@ -528,10 +551,11 @@ function FailureRow({ f, checked, onCheck, selectable }: { f: Failure; checked: 
               <Zap className="w-3 h-3" /> Fix
             </button>
           )}
-          {isPending && (
-            <a href="/review" className="px-2 py-1 rounded border border-sev-high/40 text-sev-high hover:bg-sev-high/10 text-[10px]">
-              Review
-            </a>
+          {isPending && !open && (
+            <button onClick={() => setOpen(true)}
+              className="px-2 py-1 rounded border border-sev-high/40 text-sev-high hover:bg-sev-high/10 text-[10px]">
+              Review ↓
+            </button>
           )}
         </div>
       </div>
@@ -549,8 +573,9 @@ function FailureRow({ f, checked, onCheck, selectable }: { f: Failure; checked: 
               </p>
             </div>
           ) : (
-            <div className="space-y-2 p-3">
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] uppercase tracking-widest text-muted-foreground">
+            <div className="space-y-0">
+              {/* Eval gate header */}
+              <div className="px-3 pt-3 pb-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border">
                 <span>Eval gate</span>
                 {isEvalFailed ? (
                   <>
@@ -567,7 +592,7 @@ function FailureRow({ f, checked, onCheck, selectable }: { f: Failure; checked: 
                       );
                     })}
                     <span className="normal-case tracking-normal text-sev-critical">
-                      Adjust thresholds in Settings → Eval gate, or wait for regeneration
+                      Lower thresholds in Settings → Eval gate to unblock, or edit the fix below
                     </span>
                   </>
                 ) : (
@@ -579,8 +604,101 @@ function FailureRow({ f, checked, onCheck, selectable }: { f: Failure; checked: 
                     </span>
                   </>
                 )}
+                {canApproveReject && !editMode && (
+                  <button onClick={() => { setDraft(f.fix?.after ?? ""); setEditMode(true); }}
+                    className="ml-auto flex items-center gap-1 px-2 py-0.5 rounded border border-border hover:bg-accent/30 normal-case tracking-normal text-foreground/70">
+                    <Pencil className="w-2.5 h-2.5" /> Edit fix
+                  </button>
+                )}
+                {editMode && (
+                  <button onClick={() => { setEditMode(false); setDraft(f.fix?.after ?? ""); }}
+                    className="ml-auto flex items-center gap-1 px-2 py-0.5 rounded border border-border hover:bg-accent/30 normal-case tracking-normal text-foreground/70">
+                    <X className="w-2.5 h-2.5" /> Cancel edit
+                  </button>
+                )}
               </div>
-              <DiffPane before={f.fix!.before} after={f.fix!.after} pillar={f.pillar} maxHeight={200} />
+
+              {/* Diff or edit view */}
+              <div className="p-3">
+                {editMode ? (
+                  <div className="grid md:grid-cols-2 gap-2">
+                    <div className="border border-border rounded overflow-hidden" style={{ borderColor: "color-mix(in oklab, var(--sev-critical) 35%, transparent)" }}>
+                      <div className="px-2 py-1 text-[9px] uppercase tracking-widest border-b text-sev-critical"
+                        style={{ borderColor: "color-mix(in oklab, var(--sev-critical) 35%, transparent)", background: "color-mix(in oklab, var(--sev-critical) 8%, transparent)" }}>
+                        Current state
+                      </div>
+                      <pre className="text-[10.5px] font-mono leading-relaxed whitespace-pre-wrap text-muted-foreground p-3 max-h-[200px] overflow-auto">{f.fix!.before}</pre>
+                    </div>
+                    <div className="border border-primary/40 rounded overflow-hidden">
+                      <div className="px-2 py-1 text-[9px] uppercase tracking-widest border-b border-primary/40 text-primary bg-primary/8">
+                        Your edit
+                      </div>
+                      <textarea
+                        value={draft}
+                        onChange={(e) => setDraft(e.target.value)}
+                        className="w-full bg-transparent outline-none text-[10.5px] leading-relaxed text-foreground min-h-[160px] max-h-[200px] font-mono resize-y p-3"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <DiffPane before={f.fix!.before} after={f.fix!.after} pillar={f.pillar} maxHeight={200} />
+                )}
+              </div>
+
+              {/* Approve / Reject action bar */}
+              {canApproveReject && (
+                <div className="border-t border-border px-3 py-2.5 flex flex-wrap items-center gap-2">
+                  {rejectPending ? (
+                    <>
+                      <input
+                        autoFocus
+                        value={rejectReason}
+                        onChange={(e) => setRejectReason(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") handleRejectConfirm(); if (e.key === "Escape") { setRejectPending(false); setRejectReason(""); } }}
+                        placeholder="Reason (optional) — press Enter to confirm, Esc to cancel"
+                        className="flex-1 min-w-[200px] bg-background border border-border rounded px-2.5 py-1.5 text-[11px] outline-none focus:border-sev-critical/60 placeholder:text-muted-foreground/50"
+                      />
+                      <button onClick={handleRejectConfirm}
+                        className="px-3 py-1.5 rounded bg-sev-critical text-white text-[11px] flex items-center gap-1.5 font-medium">
+                        <X className="w-3 h-3" /> Confirm reject
+                      </button>
+                      <button onClick={() => { setRejectPending(false); setRejectReason(""); }}
+                        className="px-3 py-1.5 rounded border border-border text-[11px] text-muted-foreground hover:bg-accent/30">
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={handleApprove}
+                        className="px-3 py-1.5 rounded bg-sev-low text-background text-[11px] flex items-center gap-1.5 font-medium hover:opacity-90">
+                        <Check className="w-3 h-3" /> {editMode ? "Save & Approve" : "Approve & Deploy"}
+                      </button>
+                      {editMode && (
+                        <button onClick={() => { editFix(f.id, draft); setEditMode(false); }}
+                          className="px-3 py-1.5 rounded border border-primary/50 text-primary hover:bg-primary/10 text-[11px] flex items-center gap-1.5">
+                          <Check className="w-3 h-3" /> Save edit only
+                        </button>
+                      )}
+                      <button onClick={() => { setRejectPending(true); }}
+                        className="px-3 py-1.5 rounded border border-sev-critical/50 text-sev-critical hover:bg-sev-critical/10 text-[11px] flex items-center gap-1.5">
+                        <X className="w-3 h-3" /> Reject
+                      </button>
+                      {isEvalFailed && (
+                        <span className="text-[10px] text-muted-foreground ml-1">
+                          Approving overrides the eval gate — use with caution
+                        </span>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Terminal state badge */}
+              {isTerminal && (
+                <div className="border-t border-border px-3 py-2 text-[10px] text-muted-foreground">
+                  {f.status === "deployed" ? "✓ Fix is live on your store" : f.status === "rejected" ? "✗ Fix was rejected" : "↩ Rolled back to previous state"}
+                </div>
+              )}
             </div>
           )}
         </div>
