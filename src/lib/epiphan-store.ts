@@ -71,6 +71,25 @@ export type FixHistoryEntry = {
   pillarDelta: number;    // delta on the pillar that was healed
 };
 
+export type EvalThresholds = {
+  factPreservation: number;
+  semanticDensity: number;
+  structuralSyntax: number;
+  objectAccuracy: number;
+};
+
+export const EVAL_THRESHOLD_META: {
+  key: keyof EvalThresholds;
+  label: string;
+  description: string;
+  default: number;
+}[] = [
+  { key: "factPreservation", label: "Fact Preservation", description: "All claims in the generated fix must trace back to extracted product data. Guards against hallucinated specs, invented certifications, and made-up delivery promises.", default: 100 },
+  { key: "semanticDensity", label: "Semantic Density", description: "Output must contain sufficient context-rich language for AI engines to parse intent. Low scores indicate thin, vague copy that won't improve GEO visibility.", default: 90 },
+  { key: "structuralSyntax", label: "Structural Syntax", description: "Generated JSON-LD, HTML, and robots.txt must be syntactically valid and parse without errors. A score below 100 means the output cannot be safely deployed.", default: 100 },
+  { key: "objectAccuracy", label: "Object Accuracy", description: "Product objects referenced in the fix (SKU, brand, price, currency) must match the source data. Mismatches cause incorrect structured data in search engines.", default: 95 },
+];
+
 interface State {
   audits: AuditRecord[];
   activeAuditId: string | null;
@@ -80,6 +99,7 @@ interface State {
   integrations: IntegrationConfig;
   totalCostUsd: number;
   autoDeployEnabled: boolean;
+  evalThresholds: EvalThresholds;
   startAudit: (url: string) => string;
   approveFix: (failureId: string) => void;
   bulkApprove: (failureIds: string[]) => void;
@@ -92,6 +112,7 @@ interface State {
   autoFix: (failureId: string) => void;
   setIntegration: <K extends keyof IntegrationConfig>(key: K, value: IntegrationConfig[K]) => void;
   setAutoDeployEnabled: (enabled: boolean) => void;
+  setEvalThreshold: (key: keyof EvalThresholds, value: number) => void;
   pushToPlatform: (failureIds: string[], platform: PlatformId) => void;
   notifySlackCritical: (failureRecordId: string) => void;
 }
@@ -142,6 +163,12 @@ export const useEpiphan = create<State>((set, get) => ({
   integrations: { ...EMPTY_INTEGRATIONS },
   totalCostUsd: 0,
   autoDeployEnabled: false,
+  evalThresholds: {
+    factPreservation: 100,
+    semanticDensity: 90,
+    structuralSyntax: 100,
+    objectAccuracy: 95,
+  },
 
   getAudit: (id) => get().audits.find((a) => a.id === id),
 
@@ -151,6 +178,12 @@ export const useEpiphan = create<State>((set, get) => ({
 
   setAutoDeployEnabled: (enabled) => {
     set((): Partial<State> => ({ autoDeployEnabled: enabled }));
+  },
+
+  setEvalThreshold: (key, value) => {
+    set((s): Partial<State> => ({
+      evalThresholds: { ...s.evalThresholds, [key]: value },
+    }));
   },
 
   notifySlackCritical: (failureRecordId) => {
@@ -198,6 +231,7 @@ export const useEpiphan = create<State>((set, get) => ({
   startAudit: (url) => {
     const id = uid();
     const ctx = inferProductContext(url);
+    const thresholds = get().evalThresholds;
     const audit: AuditRecord = {
       id, url, storeName: ctx.brand || deriveStoreName(url),
       status: "running", currentPillar: "P1",
@@ -223,18 +257,27 @@ export const useEpiphan = create<State>((set, get) => ({
             };
             if (c.isAutofixable) {
               const tpl = fixTemplateFor(failure, ctx);
-              const fp = 96 + Math.floor(Math.random() * 5);
+              const fp = 94 + Math.floor(Math.random() * 7);   // 94–100
+              const sd = 86 + Math.floor(Math.random() * 15);  // 86–100
+              const ss = 92 + Math.floor(Math.random() * 9);   // 92–100
+              const oa = 90 + Math.floor(Math.random() * 11);  // 90–100
               const grounding = 92 + Math.floor(Math.random() * 8);
+              const overall: "PASS" | "FAIL" =
+                fp >= thresholds.factPreservation &&
+                sd >= thresholds.semanticDensity &&
+                ss >= thresholds.structuralSyntax &&
+                oa >= thresholds.objectAccuracy
+                  ? "PASS" : "FAIL";
               failure.fix = {
                 id: uid(), fixType: tpl.type, generatedBy: tpl.model,
                 before: tpl.before, after: tpl.after,
-                evalScores: { factPreservation: fp, semanticDensity: 96, structuralSyntax: 100, objectAccuracy: 98, overall: "PASS" },
+                evalScores: { factPreservation: fp, semanticDensity: sd, structuralSyntax: ss, objectAccuracy: oa, overall },
                 hallucinationScore: 100 - fp,
                 groundingScore: grounding,
                 reasoning: judgeReasoning(failure.pillar, tpl.type, fp, grounding),
                 rollbackSnapshot: tpl.before,
               };
-              failure.status = c.requiresHuman ? "review_pending" : "eval_passed";
+              failure.status = overall === "FAIL" ? "eval_failed" : c.requiresHuman ? "review_pending" : "eval_passed";
               logTrace(set, get, {
                 model: MODEL_MATRIX[tpl.model as keyof typeof MODEL_MATRIX]?.name ?? tpl.model,
                 workflow: `WF-0${p === "P1" ? 8 : p === "P2" ? 9 : p === "P3" ? 10 : 11} ${tpl.type}`,

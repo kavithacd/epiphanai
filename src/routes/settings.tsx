@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
-import { useEpiphan } from "@/lib/epiphan-store";
+import { useEpiphan, EVAL_THRESHOLD_META } from "@/lib/epiphan-store";
 import { useState } from "react";
-import { Save, Webhook, Slack as SlackIcon, ShoppingBag, Globe, Database, Layers, Zap } from "lucide-react";
+import { Save, Webhook, Slack as SlackIcon, ShoppingBag, Globe, Database, Layers, Zap, ShieldCheck } from "lucide-react";
 import { IntegrationConfig } from "@/lib/epiphan-export";
 
 export const Route = createFileRoute("/settings")({
@@ -15,6 +15,8 @@ function Settings() {
   const setIntegration = useEpiphan((s) => s.setIntegration);
   const autoDeployEnabled = useEpiphan((s) => s.autoDeployEnabled);
   const setAutoDeployEnabled = useEpiphan((s) => s.setAutoDeployEnabled);
+  const evalThresholds = useEpiphan((s) => s.evalThresholds);
+  const setEvalThreshold = useEpiphan((s) => s.setEvalThreshold);
   const [ollamaUrl, setOllamaUrl] = useState("http://localhost:11434");
   const [n8nUrl, setN8nUrl] = useState("https://n8n.tessera.internal/webhook/audit/start");
   const [saved, setSaved] = useState(false);
@@ -65,6 +67,65 @@ function Settings() {
             {autoDeployEnabled
               ? "● Auto-deploy ON — safe fixes will deploy automatically after eval gate."
               : "● Auto-deploy OFF — all fixes route to the Review Queue for manual approval."}
+          </div>
+        </section>
+
+        {/* Eval gate */}
+        <section className="border border-border rounded-lg bg-surface p-6 space-y-5">
+          <div>
+            <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+              <ShieldCheck className="w-3 h-3" /> Eval gate thresholds
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Every AI-generated fix is scored by a judge model (Llama 3.3) on four axes before it can be approved or deployed.
+              A fix that misses <em>any</em> threshold is marked <span className="text-sev-critical">Eval failed</span> and blocked from the deploy path until regenerated.
+            </p>
+          </div>
+
+          {EVAL_THRESHOLD_META.map((m) => (
+            <div key={m.key} className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-xs font-medium text-foreground">{m.label}</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5 max-w-lg">{m.description}</div>
+                </div>
+                <div className="text-sm tabular-nums font-medium text-foreground ml-4 w-12 text-right">
+                  {evalThresholds[m.key]}%
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-[9px] text-muted-foreground w-4">0</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={evalThresholds[m.key]}
+                  onChange={(e) => setEvalThreshold(m.key, Number(e.target.value))}
+                  className="flex-1 accent-primary h-1.5"
+                />
+                <span className="text-[9px] text-muted-foreground w-6">100</span>
+              </div>
+              <div className="flex justify-between text-[9px] text-muted-foreground px-7">
+                <span>← More permissive</span>
+                <span className={evalThresholds[m.key] >= 95 ? "text-sev-low" : evalThresholds[m.key] >= 80 ? "text-sev-medium" : "text-sev-critical"}>
+                  {evalThresholds[m.key] >= 95 ? "Strict" : evalThresholds[m.key] >= 80 ? "Balanced" : "Permissive"}
+                </span>
+                <span>Stricter →</span>
+              </div>
+            </div>
+          ))}
+
+          <div className="pt-2 border-t border-border">
+            <button
+              onClick={() => EVAL_THRESHOLD_META.forEach((m) => setEvalThreshold(m.key, m.default))}
+              className="text-[10px] text-muted-foreground hover:text-foreground underline underline-offset-2"
+            >
+              Reset to defaults
+            </button>
+            <span className="text-[10px] text-muted-foreground ml-3">
+              (Fact Preservation: 100 · Semantic Density: 90 · Structural Syntax: 100 · Object Accuracy: 95)
+            </span>
           </div>
         </section>
 

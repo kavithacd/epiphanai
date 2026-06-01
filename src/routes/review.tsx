@@ -275,11 +275,12 @@ function ReviewQueue() {
 }
 
 function EvalStrip({ fix }: { fix: NonNullable<Failure["fix"]> }) {
-  const items: { label: string; value: string; pass: boolean }[] = [
-    { label: "Fact Preservation", value: `${fix.evalScores.factPreservation}%`, pass: fix.evalScores.factPreservation === 100 },
-    { label: "Semantic Density", value: `${fix.evalScores.semanticDensity}%`, pass: fix.evalScores.semanticDensity >= 90 },
-    { label: "Structural Syntax", value: `${fix.evalScores.structuralSyntax}%`, pass: fix.evalScores.structuralSyntax === 100 },
-    { label: "Object Accuracy", value: `${fix.evalScores.objectAccuracy}%`, pass: fix.evalScores.objectAccuracy >= 95 },
+  const t = useEpiphan((s) => s.evalThresholds);
+  const items: { label: string; value: string; pass: boolean; threshold?: number }[] = [
+    { label: "Fact Preservation", value: `${fix.evalScores.factPreservation}%`, pass: fix.evalScores.factPreservation >= t.factPreservation, threshold: t.factPreservation },
+    { label: "Semantic Density",  value: `${fix.evalScores.semanticDensity}%`,  pass: fix.evalScores.semanticDensity  >= t.semanticDensity,  threshold: t.semanticDensity  },
+    { label: "Structural Syntax", value: `${fix.evalScores.structuralSyntax}%`, pass: fix.evalScores.structuralSyntax >= t.structuralSyntax, threshold: t.structuralSyntax },
+    { label: "Object Accuracy",   value: `${fix.evalScores.objectAccuracy}%`,   pass: fix.evalScores.objectAccuracy   >= t.objectAccuracy,   threshold: t.objectAccuracy   },
     { label: "Judge Verdict", value: fix.evalScores.overall, pass: fix.evalScores.overall === "PASS" },
   ];
   return (
