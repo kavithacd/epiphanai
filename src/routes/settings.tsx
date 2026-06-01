@@ -3,7 +3,7 @@ import { AppShell } from "@/components/AppShell";
 import { useEpiphan, EVAL_THRESHOLD_META } from "@/lib/epiphan-store";
 import { resolveProbeQuery, ProductContext } from "@/lib/epiphan-data";
 import { useState, useEffect } from "react";
-import { Save, Webhook, Slack as SlackIcon, ShoppingBag, Globe, Database, Layers, Zap, ShieldCheck, Radio, Trash2, Plus, X, CheckCircle2 } from "lucide-react";
+import { Save, Webhook, Slack as SlackIcon, ShoppingBag, Globe, Database, Layers, Zap, ShieldCheck, Radio, Trash2, Plus, X, CheckCircle2, CloudCheck } from "lucide-react";
 import { IntegrationConfig } from "@/lib/epiphan-export";
 
 export const Route = createFileRoute("/settings")({
@@ -37,11 +37,17 @@ function Settings() {
   const [competitorInput, setCompetitorInput] = useState("");
   const [localCompetitors, setLocalCompetitors] = useState<string[]>(brandMonitorConfig.competitors);
   const [brandSaved, setBrandSaved] = useState(false);
+  const [probeSaved, setProbeSaved] = useState(false);
 
   useEffect(() => {
     setBrandInput(brandMonitorConfig.brandName || brandMonitorConfig.productUrl);
     setLocalCompetitors(brandMonitorConfig.competitors);
   }, [brandMonitorConfig]);
+
+  function flashProbeSaved() {
+    setProbeSaved(true);
+    setTimeout(() => setProbeSaved(false), 2000);
+  }
 
   const savedBrandInput = brandMonitorConfig.brandName || brandMonitorConfig.productUrl;
   const isBrandDirty =
@@ -310,8 +316,14 @@ function Settings() {
         {/* Probe configuration */}
         <section id="probe-configuration" className="border border-border rounded-lg bg-surface p-6 space-y-5">
           <div>
-            <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
-              <Radio className="w-3 h-3" /> Probe configuration
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+                <Radio className="w-3 h-3" /> Probe configuration
+              </div>
+              <div className={`flex items-center gap-1 text-[10px] text-sev-low transition-opacity duration-300 ${probeSaved ? "opacity-100" : "opacity-0"}`}>
+                <CloudCheck className="w-3 h-3" />
+                Changes auto-saved
+              </div>
             </div>
             <p className="text-[11px] text-muted-foreground mt-1">
               Configure which AI engines and query strings are used during P5 Share-of-Voice probing.
@@ -336,7 +348,7 @@ function Settings() {
                 <button
                   role="switch"
                   aria-checked={engine.enabled}
-                  onClick={() => toggleProbeEngine(engine.id)}
+                  onClick={() => { toggleProbeEngine(engine.id); flashProbeSaved(); }}
                   className={`relative inline-flex h-4 w-8 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${engine.enabled ? "bg-primary" : "bg-muted"}`}
                 >
                   <span className={`inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200 ${engine.enabled ? "translate-x-4" : "translate-x-0"}`} />
@@ -382,7 +394,7 @@ function Settings() {
                       <button
                         role="switch"
                         aria-checked={query.enabled}
-                        onClick={() => toggleProbeQuery(query.id)}
+                        onClick={() => { toggleProbeQuery(query.id); flashProbeSaved(); }}
                         title={query.enabled ? "Disable query" : "Enable query"}
                         className={`relative inline-flex h-3.5 w-6 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${query.enabled ? "bg-primary" : "bg-muted"}`}
                       >
@@ -391,11 +403,11 @@ function Settings() {
                       <input
                         type="text"
                         value={query.text}
-                        onChange={(e) => updateProbeQuery(query.id, e.target.value)}
+                        onChange={(e) => { updateProbeQuery(query.id, e.target.value); flashProbeSaved(); }}
                         className={`flex-1 bg-background border border-border rounded px-2 py-1 text-[11px] font-mono outline-none focus:border-primary transition-opacity ${query.enabled ? "opacity-100" : "opacity-40"}`}
                       />
                       <button
-                        onClick={() => deleteProbeQuery(query.id)}
+                        onClick={() => { deleteProbeQuery(query.id); flashProbeSaved(); }}
                         disabled={probeQueries.length <= 1}
                         title={probeQueries.length <= 1 ? "At least one probe query required" : "Delete query"}
                         className="flex-shrink-0 p-1 rounded text-muted-foreground hover:text-sev-critical hover:bg-sev-critical/10 transition-colors disabled:opacity-20 disabled:cursor-not-allowed opacity-0 group-hover:opacity-100"
@@ -419,6 +431,7 @@ function Settings() {
                   if (e.key === "Enter" && newQueryText.trim()) {
                     addProbeQuery(newQueryText.trim());
                     setNewQueryText("");
+                    flashProbeSaved();
                   }
                 }}
                 placeholder="Type a new probe query and press Enter…"
@@ -429,6 +442,7 @@ function Settings() {
                   if (newQueryText.trim()) {
                     addProbeQuery(newQueryText.trim());
                     setNewQueryText("");
+                    flashProbeSaved();
                   }
                 }}
                 disabled={!newQueryText.trim()}
