@@ -4,9 +4,9 @@ import { AppShell } from "@/components/AppShell";
 import { PillarRing, SeverityBadge, PillarBadge } from "@/components/PillarRing";
 import { DiffPane } from "@/components/DiffPane";
 import { useEpiphan } from "@/lib/epiphan-store";
-import { PILLARS, PillarId, SEVERITY_WEIGHT, Failure } from "@/lib/epiphan-data";
+import { PILLARS, PillarId, SEVERITY_WEIGHT, Failure, MissingField, SovEngineBreakdown } from "@/lib/epiphan-data";
 import { toCsv, toJson, downloadFile, copyToClipboard, toWebhookPayload } from "@/lib/epiphan-export";
-import { Play, Loader2, CheckCircle2, ArrowRight, Zap, Eye, EyeOff, FileText, FileJson, Copy, Check, AlertCircle, Pencil, X, RefreshCw } from "lucide-react";
+import { Play, Loader2, CheckCircle2, ArrowRight, Zap, Eye, EyeOff, FileText, FileJson, Copy, Check, AlertCircle, Pencil, X, RefreshCw, ChevronDown, ChevronRight } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { toast } from "sonner";
 import { FixStatusPill } from "@/components/StatusPills";
@@ -80,6 +80,7 @@ function Dashboard() {
 function ActiveAuditView({ audit }: { audit: ReturnType<typeof useEpiphan.getState>["audits"][0] }) {
   const isRunning = audit.status === "running";
   const fixHistory = useEpiphan((s) => s.fixHistory).filter((h) => h.auditId === audit.id);
+  const probeEngines = useEpiphan((s) => s.probeEngines);
   const failuresByPillar = useMemo(() => {
     const m: Record<PillarId, typeof audit.failures> = { P1: [], P2: [], P3: [], P4: [], P5: [] };
     audit.failures.forEach((f) => m[f.pillar].push(f));
@@ -186,6 +187,10 @@ function ActiveAuditView({ audit }: { audit: ReturnType<typeof useEpiphan.getSta
         </div>
       </section>
 
+      {audit.sovBreakdown && Object.keys(audit.sovBreakdown).length > 0 && (
+        <SovPanel sovBreakdown={audit.sovBreakdown} probeEngines={probeEngines} />
+      )}
+
       {/* NEW — score trend chart */}
       <ScoreTrend audit={audit} history={fixHistory} liveScores={liveScores} />
 
@@ -202,6 +207,191 @@ function ActiveAuditView({ audit }: { audit: ReturnType<typeof useEpiphan.getSta
         </div>
       )}
     </>
+  );
+}
+
+// ─── Share of Voice panel ─────────────────────────────────────────────────
+function SovPanel({
+  sovBreakdown,
+  probeEngines,
+}: {
+  sovBreakdown: SovEngineBreakdown;
+  probeEngines: { id: string; label: string; enabled: boolean }[];
+}) {
+  const ENGINE_COLORS: Record<string, string> = {
+    chatgpt: "var(--color-p1)",
+    gemini: "var(--color-p2)",
+    perplexity: "var(--color-p3)",
+  };
+
+  const entries = probeEngines
+    .filter((e) => e.enabled && sovBreakdown[e.id])
+    .map((e) => ({ ...e, ...sovBreakdown[e.id] }));
+
+  // Overall SoV: total brand citations / total probes across all engines
+  const totalBrandCited = entries.reduce((s, e) => s + e.brandCited, 0);
+  const totalProbes = entries.reduce((s, e) => s + e.total, 0);
+  const overallPct = totalProbes > 0 ? Math.round((totalBrandCited / totalProbes) * 100) : 0;
+
+  // Competitor presence: how many engines had at least 1 competitor citation
+  const enginesWithCompetitor = entries.filter((e) => e.competitorCited > 0).length;
+
+  return (
+    <section className="border border-border rounded-lg bg-surface overflow-hidden">
+      <div className="px-5 py-3 border-b border-border flex items-center justify-between gap-4 flex-wrap">
+        <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+          P5 · Share of Voice · AI Engine Breakdown
+        </div>
+        <div className="flex items-center gap-4 text-[10px]">
+          <div className="flex items-center gap-1.5">
+            <span className="text-muted-foreground">Your brand SoV</span>
+            <span className={`font-medium tabular-nums text-sm ${overallPct > 0 ? "text-sev-low" : "text-sev-critical"}`}>
+              {overallPct}%
+            </span>
+          </div>
+          {enginesWithCompetitor > 0 && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-muted-foreground">Competitor present in</span>
+              <span className="font-medium text-sev-high">{enginesWithCompetitor}/{entries.length} engines</span>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="p-5 space-y-5">
+        {entries.length === 0 ? (
+          <div className="text-[11px] text-muted-foreground">No probe engines enabled.</div>
+        ) : (
+          entries.map((e) => {
+            const brandPct = e.total > 0 ? Math.round((e.brandCited / e.total) * 100) : 0;
+            const competitorPct = e.total > 0 ? Math.round((e.competitorCited / e.total) * 100) : 0;
+            const color = ENGINE_COLORS[e.id] ?? "var(--color-primary)";
+            return (
+              <div key={e.id} className="space-y-2">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-medium" style={{ color }}>{e.label}</span>
+                  <span className="text-muted-foreground tabular-nums text-[10px]">{e.total} probes</span>
+                </div>
+                {/* Brand bar */}
+                <div className="space-y-0.5">
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                    <span>Your brand</span>
+                    <span className="tabular-nums" style={{ color: brandPct > 0 ? "var(--sev-low)" : "var(--sev-critical)" }}>
+                      {e.brandCited}/{e.total} · {brandPct}%
+                    </span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-border overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${brandPct}%`, background: color }}
+                    />
+                  </div>
+                </div>
+                {/* Competitor bar */}
+                {e.competitorCited > 0 && (
+                  <div className="space-y-0.5">
+                    <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                      <span>Top competitor</span>
+                      <span className="tabular-nums text-sev-high">{e.competitorCited}/{e.total} · {competitorPct}%</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-border overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-700"
+                        style={{ width: `${competitorPct}%`, background: "var(--sev-high)" }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+        {totalProbes > 0 && totalBrandCited === 0 && (
+          <p className="text-[10px] text-sev-critical/80 border-t border-border pt-3">
+            Brand was not cited in any probe query across any enabled AI engine. Improve structured content (P2) and context density (P3) to increase visibility.
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+// ─── Missing fields checklist ─────────────────────────────────────────────
+function MissingFieldsChecklist({ missingFields }: { missingFields: MissingField[] }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const ENGINE_LABEL: Record<string, string> = {
+    all: "All engines",
+    chatgpt: "ChatGPT",
+    gemini: "Gemini",
+    perplexity: "Perplexity",
+  };
+
+  const missingCount = missingFields.filter((f) => !f.present).length;
+  const totalCount = missingFields.length;
+
+  // Group fields by engine relevance
+  const groups: { key: string; label: string; fields: MissingField[] }[] = [
+    {
+      key: "all",
+      label: "Required by all engines",
+      fields: missingFields.filter((f) => f.engines.length === 1 && f.engines[0] === "all"),
+    },
+    {
+      key: "chatgpt",
+      label: "ChatGPT-specific",
+      fields: missingFields.filter((f) => f.engines.includes("chatgpt") && !f.engines.includes("all")),
+    },
+    {
+      key: "gemini",
+      label: "Gemini-specific",
+      fields: missingFields.filter((f) => f.engines.includes("gemini") && !f.engines.includes("all")),
+    },
+    {
+      key: "perplexity",
+      label: "Perplexity-specific",
+      fields: missingFields.filter((f) => f.engines.includes("perplexity") && !f.engines.includes("all")),
+    },
+  ].filter((g) => g.fields.length > 0);
+
+  return (
+    <div className="border-t border-border">
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full flex items-center justify-between px-3 py-2 hover:bg-accent/20 text-left"
+      >
+        <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+          {expanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+          Required fields checklist
+          <span className={`normal-case tracking-normal font-medium ${missingCount > 0 ? "text-sev-critical" : "text-sev-low"}`}>
+            {missingCount === 0 ? "all present" : `${missingCount}/${totalCount} missing`}
+          </span>
+        </div>
+      </button>
+      {expanded && (
+        <div className="px-3 pb-3 space-y-3">
+          {groups.map((group) => (
+            <div key={group.key}>
+              <div className="text-[9px] uppercase tracking-widest text-muted-foreground mb-1.5">{group.label}</div>
+              <div className="space-y-1">
+                {group.fields.map((field) => (
+                  <div key={`${field.schemaType}-${field.field}`} className="flex items-center gap-2 text-[11px]">
+                    {field.present ? (
+                      <span className="text-sev-low w-3 text-center">✓</span>
+                    ) : (
+                      <span className="text-sev-critical w-3 text-center">✗</span>
+                    )}
+                    <span className={field.present ? "text-muted-foreground" : "text-foreground"}>
+                      {field.label}
+                    </span>
+                    <span className="text-[9px] text-muted-foreground/60 font-mono">{field.schemaType}.{field.field}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -667,14 +857,19 @@ function FailureRow({ f, checked, onCheck, selectable }: { f: Failure; checked: 
       {open && (
         <div className="mx-5 mb-3 rounded border border-border bg-background/60 overflow-hidden">
           {isManual ? (
-            <div className="px-4 py-3 space-y-1.5">
-              <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
-                <AlertCircle className="w-3 h-3" /> Manual action required
+            <div className="space-y-0">
+              <div className="px-4 py-3 space-y-1.5">
+                <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+                  <AlertCircle className="w-3 h-3" /> Manual action required
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  No automated fix is available for this issue — it requires a change you make directly in your store or CMS.
+                  Once resolved, you can acknowledge it from the Review Queue.
+                </p>
               </div>
-              <p className="text-[11px] text-muted-foreground">
-                No automated fix is available for this issue — it requires a change you make directly in your store or CMS.
-                Once resolved, you can acknowledge it from the Review Queue.
-              </p>
+              {f.missingFields && f.missingFields.length > 0 && (
+                <MissingFieldsChecklist missingFields={f.missingFields} />
+              )}
             </div>
           ) : (
             <div className="space-y-0">
@@ -818,6 +1013,11 @@ function FailureRow({ f, checked, onCheck, selectable }: { f: Failure; checked: 
                 <div className="border-t border-border px-3 py-2 text-[10px] text-muted-foreground">
                   {f.status === "deployed" ? "✓ Fix is live on your store" : f.status === "rejected" ? "✗ Fix was rejected" : "↩ Rolled back to previous state"}
                 </div>
+              )}
+
+              {/* Missing fields checklist for P2 failures */}
+              {f.missingFields && f.missingFields.length > 0 && (
+                <MissingFieldsChecklist missingFields={f.missingFields} />
               )}
             </div>
           )}

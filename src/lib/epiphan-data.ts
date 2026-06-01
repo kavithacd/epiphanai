@@ -62,6 +62,69 @@ export function hashStr(s: string): number {
   return h >>> 0;
 }
 
+// ─── Schema field registry for P2 gap detection ──────────────────────────
+export type EngineTag = "all" | "chatgpt" | "gemini" | "perplexity";
+export type SchemaType = "Organization" | "Product" | "Offer" | "FAQPage";
+
+export type SchemaFieldEntry = {
+  field: string;
+  label: string;
+  engines: EngineTag[];
+};
+
+export const SCHEMA_FIELD_REGISTRY: Record<SchemaType, SchemaFieldEntry[]> = {
+  Organization: [
+    { field: "name", label: "Organization name", engines: ["all"] },
+    { field: "url", label: "Website URL", engines: ["all"] },
+    { field: "logo", label: "Logo image URL", engines: ["all"] },
+    { field: "sameAs", label: "Social/authority links (sameAs)", engines: ["all"] },
+    { field: "description", label: "Organization description", engines: ["chatgpt", "perplexity"] },
+    { field: "contactPoint", label: "Contact information", engines: ["gemini"] },
+    { field: "address", label: "Physical address", engines: ["gemini"] },
+  ],
+  Product: [
+    { field: "name", label: "Product name", engines: ["all"] },
+    { field: "description", label: "Product description", engines: ["all"] },
+    { field: "image", label: "Product image URL", engines: ["all"] },
+    { field: "sku", label: "SKU / product code", engines: ["all"] },
+    { field: "brand", label: "Brand entity", engines: ["all"] },
+    { field: "offers", label: "Offer block (price, availability)", engines: ["all"] },
+    { field: "aggregateRating", label: "Aggregate rating", engines: ["chatgpt", "perplexity"] },
+    { field: "review", label: "Individual reviews", engines: ["gemini"] },
+    { field: "gtin", label: "GTIN / barcode", engines: ["gemini"] },
+    { field: "material", label: "Material specification", engines: ["chatgpt"] },
+    { field: "category", label: "Product category", engines: ["perplexity"] },
+  ],
+  Offer: [
+    { field: "price", label: "Price value", engines: ["all"] },
+    { field: "priceCurrency", label: "Price currency", engines: ["all"] },
+    { field: "availability", label: "Availability status", engines: ["all"] },
+    { field: "url", label: "Offer / product URL", engines: ["chatgpt", "gemini"] },
+    { field: "priceValidUntil", label: "Price valid until date", engines: ["gemini"] },
+    { field: "shippingDetails", label: "Shipping details", engines: ["gemini"] },
+  ],
+  FAQPage: [
+    { field: "mainEntity", label: "FAQ questions array", engines: ["all"] },
+    { field: "name", label: "FAQ question text (per Question)", engines: ["all"] },
+    { field: "acceptedAnswer", label: "Answer text (per Question)", engines: ["all"] },
+  ],
+};
+
+export type MissingField = {
+  schemaType: SchemaType;
+  field: string;
+  label: string;
+  engines: EngineTag[];
+  present: boolean;
+};
+
+// ─── Share of Voice breakdown ─────────────────────────────────────────────
+export type SovEngineBreakdown = Record<string, {
+  brandCited: number;
+  competitorCited: number;
+  total: number;
+}>;
+
 export type Failure = {
   id: string;
   auditId: string;
@@ -76,6 +139,7 @@ export type Failure = {
   detectedAt: number;
   fix?: Fix;
   regenerationCount?: number;
+  missingFields?: MissingField[];
 };
 
 export type Fix = {
@@ -109,6 +173,7 @@ export type AuditRecord = {
   createdAt: number;
   completedAt?: number;
   ctx?: ProductContext;
+  sovBreakdown?: SovEngineBreakdown;
 };
 
 export type TraceLog = {

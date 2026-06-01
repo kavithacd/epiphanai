@@ -4,7 +4,8 @@ import { toast } from "sonner";
 import {
   AuditRecord, Failure, Fix, FAILURE_CATALOG, fixTemplateFor, PILLARS,
   PillarId, SEVERITY_WEIGHT, TraceLog, MODEL_MATRIX, describeFix,
-  inferProductContext, ProductContext, resolveProbeQuery,
+  inferProductContext, ProductContext, resolveProbeQuery, SCHEMA_FIELD_REGISTRY, MissingField,
+  SchemaType, SovEngineBreakdown,
 } from "./epiphan-data";
 import {
   IntegrationConfig, EMPTY_INTEGRATIONS, PlatformId, PLATFORM_LABEL,
@@ -32,6 +33,62 @@ function judgeReasoning(pillar: PillarId, fixType: string, fp: number, grounding
     case "P5":
       return base + `Probe results cited directly; no synthesised citations. Outreach plan flagged for human approval before any external action.`;
   }
+}
+
+// ─── P2 missing field gap detection ──────────────────────────────────────
+// Extracts field keys from a JSON-LD "before" string (the existing page markup).
+// Returns an empty set if the string is a comment/placeholder (schema absent).
+function extractJsonLdFields(beforeText: string): Set<string> {
+  const trimmed = beforeText.trim();
+  if (trimmed.startsWith("//") || trimmed.startsWith("#") || !trimmed.startsWith("{")) {
+    return new Set();
+  }
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (parsed && typeof parsed === "object") return new Set(Object.keys(parsed));
+  } catch {
+    // Malformed JSON (e.g. F2.4 double comma) — extract keys via regex
+    const keys = new Set<string>();
+    for (const m of trimmed.matchAll(/"([^"@][^"]*?)"\s*:/g)) keys.add(m[1]);
+    return keys;
+  }
+  return new Set();
+}
+
+// Build a MissingField list for the given schema types, given fields already
+// present in the page's JSON-LD markup (derived from extractJsonLdFields).
+function computeMissingFields(schemaTypes: SchemaType[], presentFields: Set<string>): MissingField[] {
+  const result: MissingField[] = [];
+  for (const type of schemaTypes) {
+    for (const entry of (SCHEMA_FIELD_REGISTRY[type] ?? [])) {
+      result.push({
+        schemaType: type, field: entry.field, label: entry.label,
+        engines: entry.engines, present: presentFields.has(entry.field),
+      });
+    }
+  }
+  return result;
+}
+
+// ─── P5 SoV per-engine simulation ────────────────────────────────────────
+// Computed once per audit when the P5 pillar starts — not per individual failure.
+// Both F5.1 ("zero brand citations") and F5.2 ("competitor dominance") can fire
+// for the same audit; they describe complementary aspects of the same zero-SoV
+// probe result: brand=0, competitor=dominant. Keeping a single stable breakdown
+// avoids contradictions between failure messages and the panel values.
+function computeSovBreakdown(
+  probeEngines: { id: string; label: string; enabled: boolean }[],
+  totalProbes: number,
+): SovEngineBreakdown {
+  const breakdown: SovEngineBreakdown = {};
+  for (const engine of probeEngines) {
+    if (!engine.enabled) continue;
+    // Brand not cited in any probe (consistent with F5.1: "zero brand citations").
+    // Competitor cited in ~80% of probes (consistent with F5.2: "competitor dominance").
+    const competitorCited = Math.ceil(totalProbes * 0.8);
+    breakdown[engine.id] = { brandCited: 0, competitorCited, total: totalProbes };
+  }
+  return breakdown;
 }
 
 function deriveStoreName(url: string) {
@@ -336,6 +393,16 @@ export const useEpiphan = create<State>()(persist((set, get) => ({
         set((s): Partial<State> => ({
           audits: s.audits.map((a) => a.id === id ? { ...a, currentPillar: p } : a),
         }));
+
+        // SoV breakdown computed once when P5 pillar starts — shared by all P5 failures.
+        // brandCited=0 (F5.1 ground truth) + competitorCited=high (F5.2 ground truth).
+        if (p === "P5") {
+          const sov = computeSovBreakdown(probeEngines, enabledProbeCount);
+          set((s): Partial<State> => ({
+            audits: s.audits.map((a) => a.id === id ? { ...a, sovBreakdown: sov } : a),
+          }));
+        }
+
         const candidates = FAILURE_CATALOG.filter((c) => c.pillar === p);
         const picks = candidates.slice(0, Math.min(candidates.length, 3 + (p === "P2" || p === "P4" ? 1 : 0)));
         picks.forEach((c, ci) => {
@@ -346,11 +413,34 @@ export const useEpiphan = create<State>()(persist((set, get) => ({
                 : c.failureId === "F5.2"
                 ? `Top competitor cited in ${Math.round(enabledProbeCount * 0.8)}/${enabledProbeCount} AI answers across ${enginesStr} for ${ctx.category} queries. Share of voice: 0%.`
                 : c.detail;
+            // Compute missing fields by parsing the existing page markup (fix template "before").
+            // schemaTypes define which registry sections to check against.
+            let missingFields: MissingField[] | undefined;
+            {
+              const schemaTypesFor: Partial<Record<string, SchemaType[]>> = {
+                "F2.1": ["Product", "Offer"],
+                "F2.3": ["Organization"],
+                "F2.4": ["Product", "Offer"],
+                "F3.2": ["FAQPage"],
+              };
+              const schemaTypes = schemaTypesFor[c.failureId];
+              if (schemaTypes) {
+                const tplForGap = fixTemplateFor(
+                  { ...c, id: "gap-probe", auditId: id, status: "detected" as const, detectedAt: 0 },
+                  ctx,
+                );
+                const presentFields = extractJsonLdFields(tplForGap.before);
+                missingFields = computeMissingFields(schemaTypes, presentFields);
+              }
+            }
+
             const failure: Failure = {
               ...c, id: uid(), auditId: id,
               status: "detected", detectedAt: Date.now(),
               detail: dynamicDetail,
+              ...(missingFields ? { missingFields } : {}),
             };
+
             if (c.isAutofixable) {
               const tpl = fixTemplateFor(failure, ctx);
               const fp = 94 + Math.floor(Math.random() * 7);   // 94–100
