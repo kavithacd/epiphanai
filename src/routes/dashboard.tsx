@@ -266,8 +266,29 @@ function FeedSection({
   const regenerateFix = useEpiphan((s) => s.regenerateFix);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<FeedFilter>("all");
+  const [regenBatch, setRegenBatch] = useState<Set<string>>(new Set());
 
-  useEffect(() => { setFilter("all"); setSelected(new Set()); }, [audit.id]);
+  useEffect(() => { setFilter("all"); setSelected(new Set()); setRegenBatch(new Set()); }, [audit.id]);
+
+  useEffect(() => {
+    if (regenBatch.size === 0) return;
+    const batchFailures = audit.failures.filter((f) => regenBatch.has(f.id));
+    const allSettled = batchFailures.every((f) => f.status !== "generating");
+    if (!allSettled) return;
+    const passed = batchFailures.filter((f) => f.status !== "eval_failed").length;
+    const stillFailed = batchFailures.length - passed;
+    if (stillFailed === 0) {
+      toast.success(`All ${batchFailures.length} fix${batchFailures.length === 1 ? "" : "es"} passed the eval gate`, {
+        description: "Ready to deploy — approve from the Review Queue or click Fix in the feed.",
+      });
+    } else {
+      toast.warning(`${passed} of ${batchFailures.length} fix${batchFailures.length === 1 ? "" : "es"} passed the eval gate`, {
+        description: `${stillFailed} still failing — try lowering your eval thresholds in Settings, or expand the row to edit the fix manually.`,
+        duration: 8000,
+      });
+    }
+    setRegenBatch(new Set());
+  }, [audit.failures, regenBatch]);
 
   const evalFailed = audit.failures.filter((f) => f.status === "eval_failed");
   const selectable = audit.failures.filter((f) => f.fix && (f.status === "eval_passed" || f.status === "detected" || f.status === "review_pending"));
@@ -379,7 +400,9 @@ function FeedSection({
             {evalFailed.length > 0 && (
               <button
                 onClick={() => {
-                  evalFailed.forEach((f) => regenerateFix(f.id));
+                  const ids = evalFailed.map((f) => f.id);
+                  ids.forEach((id) => regenerateFix(id));
+                  setRegenBatch(new Set(ids));
                   toast.message("Regenerating failed fixes…", { description: `Re-running AI generation for ${evalFailed.length} eval-failed fix${evalFailed.length === 1 ? "" : "es"}.` });
                 }}
                 disabled={evalFailed.every((f) => f.status === "generating")}
