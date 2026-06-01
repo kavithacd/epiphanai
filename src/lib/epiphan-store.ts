@@ -413,7 +413,8 @@ export const useEpiphan = create<State>((set, get) => ({
 // All seed values must be deterministic — SSR HTML must byte-match the first
 // client render or React throws hydration errors. We use mulberry32 with a
 // fixed seed and a fixed epoch (no Date.now()) so values are stable.
-const SEED_EPOCH = 1748275200000; // fixed point so Date.now() drift can't cause SSR/client mismatch
+// SEED_EPOCH is declared near the top of the file (above `create()`) to avoid
+// a TDZ error when seed* functions run during store initialization.
 function seedAudits(): AuditRecord[] {
   const rng = mulberry32(hashStr("epiphan-seed-audits-v1"));
   const a1: AuditRecord = {
