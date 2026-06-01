@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useEpiphan } from "@/lib/epiphan-store";
@@ -468,6 +468,16 @@ function BrandMonitoring() {
               Share of Voice, sentiment, and competitor citations across AI engines for{" "}
               <span className="text-foreground">{brand}</span>.
             </p>
+            {brandMonitorConfig.configured && brandMonitorConfig.brandName && (
+              <Link
+                to="/settings"
+                hash="brand-monitoring"
+                className="inline-flex items-center gap-1.5 mt-2 px-2 py-0.5 rounded-full border border-primary/30 bg-primary/8 text-primary text-[10px] hover:bg-primary/15 transition-colors"
+              >
+                <Radio className="w-2.5 h-2.5" />
+                Monitoring: {brandMonitorConfig.brandName}
+              </Link>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
