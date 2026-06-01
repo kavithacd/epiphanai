@@ -5,7 +5,7 @@ import { useEpiphan } from "@/lib/epiphan-store";
 import { Failure, describeFix } from "@/lib/epiphan-data";
 import { PillarBadge, SeverityBadge } from "@/components/PillarRing";
 import { DiffPane } from "@/components/DiffPane";
-import { FixStatusPill } from "./dashboard";
+import { FixStatusPill } from "@/components/StatusPills";
 import {
   Check, X, Pencil, ChevronRight, Sparkles, Wand2, Download, FileJson,
   FileText, Copy, Send, ChevronDown,
