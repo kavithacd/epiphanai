@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import {
   AuditRecord, Failure, Fix, FAILURE_CATALOG, fixTemplateFor, PILLARS,
   PillarId, SEVERITY_WEIGHT, TraceLog, MODEL_MATRIX, describeFix,
+  inferProductContext, DEMO_CTX, ProductContext, mulberry32, seededInt, hashStr,
 } from "./epiphan-data";
 import {
   IntegrationConfig, EMPTY_INTEGRATIONS, PlatformId, PLATFORM_LABEL,
@@ -10,8 +11,30 @@ import {
 } from "./epiphan-export";
 
 
+// Runtime IDs only (post-mount) — safe for hydration.
 const uid = () => Math.random().toString(36).slice(2, 11);
 const hash = () => "0x" + Math.random().toString(16).slice(2, 10);
+// Seeded variants used in seed* functions so SSR HTML == first client render.
+const sUid = (rng: () => number) => Math.floor(rng() * 1e11).toString(36).slice(0, 9);
+const sHash = (rng: () => number) => "0x" + Math.floor(rng() * 0xffffffff).toString(16).padStart(8, "0").slice(0, 8);
+
+// Judge-model reasoning snippet — Phoenix/Langfuse-style explanation of why
+// the eval passed. Deterministic per pillar/fix-type so demo traces are coherent.
+function judgeReasoning(pillar: PillarId, fixType: string, fp: number, grounding: number): string {
+  const base = `Fact Preservation ${fp}/100 · Grounding ${grounding}/100. `;
+  switch (pillar) {
+    case "P1":
+      return base + `Output references only headers/paths present in the source crawl. No hallucinated routes or competitor mentions detected.`;
+    case "P2":
+      return base + `JSON-LD validates against schema.org/${fixType.includes("breadcrumb") ? "BreadcrumbList" : "Product"}. All required fields trace back to extracted product data; no invented SKUs, prices, or ratings.`;
+    case "P3":
+      return base + `Copy stays inside extracted product attributes. Material, sizing and care claims all map to source fields. No fabricated certifications or delivery promises.`;
+    case "P4":
+      return base + `Vision model description aligned with image embedding similarity > 0.91. Colour, garment type and material verified against catalog metadata.`;
+    case "P5":
+      return base + `Probe results cited directly; no synthesised citations. Outreach plan flagged for human approval before any external action.`;
+  }
+}
 
 function deriveStoreName(url: string) {
   try {
@@ -94,7 +117,7 @@ function recordDeployment(
     const scoresAfter = computeScores(updated);
     const before = Object.values(scoresBefore).reduce((s, n) => s + n, 0) / 5;
     const after = Object.values(scoresAfter).reduce((s, n) => s + n, 0) / 5;
-    const d = describeFix(f);
+    const d = describeFix(f, a.ctx);
     const entry: FixHistoryEntry = {
       id: uid(), auditId: a.id, failureId: f.failureId, failureRecordId: f.id,
       pillar: f.pillar, severity: f.severity, title: d.title, detail: d.detail,
@@ -170,11 +193,13 @@ export const useEpiphan = create<State>((set, get) => ({
 
   startAudit: (url) => {
     const id = uid();
+    const ctx = inferProductContext(url);
     const audit: AuditRecord = {
-      id, url, storeName: deriveStoreName(url),
+      id, url, storeName: ctx.brand || deriveStoreName(url),
       status: "running", currentPillar: "P1",
       scores: emptyScores(), failures: [],
       createdAt: Date.now(),
+      ctx,
     };
     set((s): Partial<State> => ({ audits: [audit, ...s.audits], activeAuditId: id }));
 
@@ -193,11 +218,16 @@ export const useEpiphan = create<State>((set, get) => ({
               status: "detected", detectedAt: Date.now(),
             };
             if (c.isAutofixable) {
-              const tpl = fixTemplateFor(failure);
+              const tpl = fixTemplateFor(failure, ctx);
+              const fp = 96 + Math.floor(Math.random() * 5);
+              const grounding = 92 + Math.floor(Math.random() * 8);
               failure.fix = {
                 id: uid(), fixType: tpl.type, generatedBy: tpl.model,
                 before: tpl.before, after: tpl.after,
-                evalScores: { factPreservation: 100, semanticDensity: 96, structuralSyntax: 100, objectAccuracy: 98, overall: "PASS" },
+                evalScores: { factPreservation: fp, semanticDensity: 96, structuralSyntax: 100, objectAccuracy: 98, overall: "PASS" },
+                hallucinationScore: 100 - fp,
+                groundingScore: grounding,
+                reasoning: judgeReasoning(failure.pillar, tpl.type, fp, grounding),
                 rollbackSnapshot: tpl.before,
               };
               failure.status = c.requiresHuman ? "review_pending" : "eval_passed";
@@ -226,7 +256,7 @@ export const useEpiphan = create<State>((set, get) => ({
                       failures: a.failures.map((ff) => ff.id === deployId ? { ...ff, status: "deployed" } : ff),
                     } : a),
                   }));
-                  const d = describeFix(failure);
+                  const d = describeFix(failure, ctx);
                   toast.success(d.title, { description: d.detail });
                 }, 1200 + Math.floor(Math.random() * 1400));
               }
@@ -236,7 +266,6 @@ export const useEpiphan = create<State>((set, get) => ({
             set((s): Partial<State> => ({
               audits: s.audits.map((a) => a.id === id ? { ...a, failures: [...a.failures, failure] } : a),
             }));
-            // Slack notify on detection of a CRITICAL failure
             if (failure.severity === "CRITICAL") {
               setTimeout(() => get().notifySlackCritical(failure.id), 100);
             }
@@ -270,7 +299,11 @@ export const useEpiphan = create<State>((set, get) => ({
         failures: a.failures.map((f) => {
           if (f.id !== failureId) return f;
           target = f;
-          return { ...f, status: "deployed" };
+          return {
+            ...f,
+            status: "deployed",
+            fix: f.fix ? { ...f.fix, userFeedback: "pass" } : f.fix,
+          };
         }),
       })),
     }));
@@ -280,7 +313,8 @@ export const useEpiphan = create<State>((set, get) => ({
       durationMs: 820, tokensIn: 0, tokensOut: 0, costUsd: 0, status: "success",
     });
     if (target) {
-      const d = describeFix(target);
+      const auditCtx = get().audits.find((a) => a.failures.some((f) => f.id === failureId))?.ctx;
+      const d = describeFix(target, auditCtx);
       toast.success(d.title, { description: d.detail });
     }
   },
@@ -296,7 +330,9 @@ export const useEpiphan = create<State>((set, get) => ({
       set((s): Partial<State> => ({
         audits: s.audits.map((a) => ({
           ...a,
-          failures: a.failures.map((x) => x.id === id ? { ...x, status: "deployed" } : x),
+          failures: a.failures.map((x) => x.id === id
+            ? { ...x, status: "deployed", fix: x.fix ? { ...x.fix, userFeedback: "pass" } : x.fix }
+            : x),
         })),
       }));
     });
@@ -329,7 +365,9 @@ export const useEpiphan = create<State>((set, get) => ({
     set((s): Partial<State> => ({
       audits: s.audits.map((a) => ({
         ...a,
-        failures: a.failures.map((f) => f.id === failureId ? { ...f, status: "rejected" } : f),
+        failures: a.failures.map((f) => f.id === failureId
+          ? { ...f, status: "rejected", fix: f.fix ? { ...f.fix, userFeedback: "fail" } : f.fix }
+          : f),
       })),
       guardrailEvents: [
         { id: uid(), ts: Date.now(), rule: "Human Review", outcome: "blocked" as const, detail: `Fix rejected: ${reason}` },
@@ -368,7 +406,12 @@ export const useEpiphan = create<State>((set, get) => ({
 }));
 
 // ──────────────────────────────── seed data ────────────────────────────────
+// All seed values must be deterministic — SSR HTML must byte-match the first
+// client render or React throws hydration errors. We use mulberry32 with a
+// fixed seed and a fixed epoch (no Date.now()) so values are stable.
+const SEED_EPOCH = 1748275200000; // fixed point so Date.now() drift can't cause SSR/client mismatch
 function seedAudits(): AuditRecord[] {
+  const rng = mulberry32(hashStr("epiphan-seed-audits-v1"));
   const a1: AuditRecord = {
     id: "demo-acme",
     url: "https://acme-apparel.myshopify.com",
@@ -376,21 +419,30 @@ function seedAudits(): AuditRecord[] {
     status: "complete", currentPillar: null,
     scores: { P1: 70, P2: 40, P3: 30, P4: 65, P5: 50 },
     failures: [],
-    createdAt: Date.now() - 1000 * 60 * 60 * 24 * 2,
-    completedAt: Date.now() - 1000 * 60 * 60 * 24 * 2 + 1000 * 60 * 47,
+    createdAt: SEED_EPOCH - 1000 * 60 * 60 * 24 * 2,
+    completedAt: SEED_EPOCH - 1000 * 60 * 60 * 24 * 2 + 1000 * 60 * 47,
+    ctx: DEMO_CTX,
   };
   a1.failures = FAILURE_CATALOG.slice(0, 12).map((c) => {
     const f: Failure = {
-      ...c, id: uid(), auditId: a1.id,
+      ...c, id: sUid(rng), auditId: a1.id,
       status: c.isAutofixable && !c.requiresHuman ? "deployed" : "review_pending",
       detectedAt: a1.createdAt,
     };
     if (c.isAutofixable) {
-      const tpl = fixTemplateFor(f);
+      const tpl = fixTemplateFor(f, DEMO_CTX);
+      const fp = 97 + seededInt(rng, 0, 3);
+      const grounding = 93 + seededInt(rng, 0, 6);
+      const userFeedback: "pass" | "fail" | undefined =
+        f.status === "deployed" ? (rng() > 0.18 ? "pass" : "fail") : undefined;
       f.fix = {
-        id: uid(), fixType: tpl.type, generatedBy: tpl.model,
+        id: sUid(rng), fixType: tpl.type, generatedBy: tpl.model,
         before: tpl.before, after: tpl.after,
-        evalScores: { factPreservation: 100, semanticDensity: 97, structuralSyntax: 100, objectAccuracy: 99, overall: "PASS" },
+        evalScores: { factPreservation: fp, semanticDensity: 97, structuralSyntax: 100, objectAccuracy: 99, overall: "PASS" },
+        hallucinationScore: 100 - fp,
+        groundingScore: grounding,
+        reasoning: judgeReasoning(f.pillar, tpl.type, fp, grounding),
+        userFeedback,
         rollbackSnapshot: tpl.before,
       };
     }
@@ -400,6 +452,7 @@ function seedAudits(): AuditRecord[] {
 }
 
 function seedTraces(): TraceLog[] {
+  const rng = mulberry32(hashStr("epiphan-seed-traces-v1"));
   const t: TraceLog[] = [];
   const wfs = [
     { wf: "WF-02 P1 Audit", model: "Phi-4" },
@@ -411,12 +464,12 @@ function seedTraces(): TraceLog[] {
   for (let i = 0; i < 14; i++) {
     const w = wfs[i % wfs.length];
     t.push({
-      id: uid(), timestamp: Date.now() - i * 1000 * 60 * 7,
-      model: w.model, workflow: w.wf, promptHash: hash(),
+      id: sUid(rng), timestamp: SEED_EPOCH - i * 1000 * 60 * 7,
+      model: w.model, workflow: w.wf, promptHash: sHash(rng),
       operator: "consultant@tessera.eu",
-      durationMs: 320 + Math.floor(Math.random() * 2200),
-      tokensIn: 200 + Math.floor(Math.random() * 1200),
-      tokensOut: 60 + Math.floor(Math.random() * 800),
+      durationMs: 320 + seededInt(rng, 0, 2199),
+      tokensIn: 200 + seededInt(rng, 0, 1199),
+      tokensOut: 60 + seededInt(rng, 0, 799),
       costUsd: 0, status: i === 11 ? "failure" : "success",
     });
   }
@@ -425,10 +478,10 @@ function seedTraces(): TraceLog[] {
 
 function seedGuardrails() {
   return [
-    { id: uid(), ts: Date.now() - 1000 * 60 * 4, rule: "Sovereign Mode", outcome: "allowed" as const, detail: "Routed product copy to local inference — no cloud API touched." },
-    { id: uid(), ts: Date.now() - 1000 * 60 * 11, rule: "Destructive Op Lock", outcome: "blocked" as const, detail: "DELETE on /products/784 refused. Used additive Metafield update instead." },
-    { id: uid(), ts: Date.now() - 1000 * 60 * 22, rule: "Eval Gate (Hallucination)", outcome: "blocked" as const, detail: "P3 copy claimed '24h delivery' not in source data. Regenerated automatically." },
-    { id: uid(), ts: Date.now() - 1000 * 60 * 38, rule: "High-Risk Filter", outcome: "blocked" as const, detail: "Medical claim 'reduces back pain' stripped from supplement copy." },
-    { id: uid(), ts: Date.now() - 1000 * 60 * 55, rule: "Rollback Snapshot", outcome: "allowed" as const, detail: "Pre-write snapshot stored for fix #4f2a (robots.txt)." },
+    { id: "g-1", ts: SEED_EPOCH - 1000 * 60 * 4, rule: "Sovereign Mode", outcome: "allowed" as const, detail: "Routed product copy to local inference — no cloud API touched." },
+    { id: "g-2", ts: SEED_EPOCH - 1000 * 60 * 11, rule: "Destructive Op Lock", outcome: "blocked" as const, detail: "DELETE on /products/784 refused. Used additive Metafield update instead." },
+    { id: "g-3", ts: SEED_EPOCH - 1000 * 60 * 22, rule: "Eval Gate (Hallucination)", outcome: "blocked" as const, detail: "P3 copy claimed '24h delivery' not in source data. Regenerated automatically." },
+    { id: "g-4", ts: SEED_EPOCH - 1000 * 60 * 38, rule: "High-Risk Filter", outcome: "blocked" as const, detail: "Medical claim 'reduces back pain' stripped from supplement copy." },
+    { id: "g-5", ts: SEED_EPOCH - 1000 * 60 * 55, rule: "Rollback Snapshot", outcome: "allowed" as const, detail: "Pre-write snapshot stored for fix #4f2a (robots.txt)." },
   ];
 }

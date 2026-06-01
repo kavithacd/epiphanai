@@ -6,7 +6,7 @@ import { DiffPane } from "@/components/DiffPane";
 import { useEpiphan } from "@/lib/epiphan-store";
 import { PILLARS, PillarId, SEVERITY_WEIGHT, Failure } from "@/lib/epiphan-data";
 import { toCsv, toJson, downloadFile, copyToClipboard, toWebhookPayload } from "@/lib/epiphan-export";
-import { Play, Plug, Loader2, CheckCircle2, ArrowRight, Zap, Eye, FileText, FileJson, Copy, Check } from "lucide-react";
+import { Play, Loader2, CheckCircle2, ArrowRight, Zap, Eye, EyeOff, FileText, FileJson, Copy, Check } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { toast } from "sonner";
 
@@ -22,11 +22,19 @@ function Dashboard() {
   const navigate = useNavigate();
   const active = audits.find((a) => a.id === activeAuditId) ?? audits[0];
 
-  const valid = /(\.myshopify\.com|\.com|\.eu|\.io|\.co)/.test(url);
+  const trimmed = url.trim();
+  // Accept anything substantive: a brand site (nike.com), a marketplace URL,
+  // a Shopify domain, a deep product link, or even a raw SKU. Audit engine
+  // resolves the source at runtime.
+  const valid = trimmed.length >= 3;
 
   function trigger() {
     if (!valid) return;
-    const id = startAudit(url.startsWith("http") ? url : `https://${url}`);
+    const looksLikeUrl = /\./.test(trimmed) || trimmed.startsWith("http");
+    const target = looksLikeUrl
+      ? (trimmed.startsWith("http") ? trimmed : `https://${trimmed}`)
+      : `sku://${trimmed}`;
+    const id = startAudit(target);
     setUrl("");
     setTimeout(() => navigate({ to: "/dashboard" }), 50);
     return id;
@@ -38,28 +46,28 @@ function Dashboard() {
         <header>
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Audit Engine</div>
           <h1 className="text-2xl font-sans font-medium mt-1">Run a GEO audit</h1>
-          <p className="text-muted-foreground text-xs mt-1">Enter any Shopify domain. P1 → P5 runs sequentially, with local-model classification.</p>
+          <p className="text-muted-foreground text-xs mt-1">
+            Paste any brand site, marketplace URL, product page, or SKU. P1 → P5 runs sequentially with local-model classification.
+          </p>
         </header>
 
         <section className="border border-border rounded-lg bg-surface p-5">
           <div className="flex flex-col md:flex-row gap-3 items-stretch">
             <div className="flex-1 flex items-center bg-background border border-border rounded px-3">
-              <span className="text-muted-foreground text-xs mr-2">https://</span>
               <input id="epiphan-audit-url" autoFocus value={url} onChange={(e) => setUrl(e.target.value)}
-                placeholder="acme-apparel.myshopify.com"
-                className="flex-1 bg-transparent outline-none py-2.5 text-sm font-mono" />
+                placeholder="nike.com  ·  adidas.com/yeezy-boost  ·  acme.myshopify.com  ·  SKU-MC-CREW-001"
+                className="flex-1 bg-transparent outline-none py-2.5 text-sm font-mono placeholder:text-muted-foreground/60" />
             </div>
-            <button className="px-4 py-2.5 rounded border border-border bg-background hover:bg-accent/30 text-xs flex items-center gap-2">
-              <Plug className="w-3.5 h-3.5" /> Connect Shopify
-            </button>
             <button onClick={trigger} disabled={!valid}
               className="px-5 py-2.5 rounded bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed text-xs flex items-center gap-2 font-medium">
               <Play className="w-3.5 h-3.5" /> Start Audit
             </button>
           </div>
-          {!valid && url.length > 0 && (
-            <div className="mt-2 text-[10px] text-sev-high">Domain must match Shopify or top-level domain pattern.</div>
-          )}
+          <div className="mt-2 text-[10px] text-muted-foreground">
+            Optional: connect a platform for direct write-back —
+            <a href="/settings#integrations" className="text-primary hover:underline ml-1">Shopify, WooCommerce, Etsy, Akeneo</a>.
+            Audits work without a connector.
+          </div>
         </section>
 
         {active && <ActiveAuditView audit={active} />}
@@ -472,7 +480,9 @@ function StorePreview({ audit }: { audit: ReturnType<typeof useEpiphan.getState>
 
 function FailureRow({ f, checked, onCheck, selectable }: { f: Failure; checked: boolean; onCheck: () => void; selectable: boolean }) {
   const autoFix = useEpiphan((s) => s.autoFix);
-  const [open, setOpen] = useState(false);
+  // Default-open the preview whenever a fix exists so users always SEE what
+  // they're about to deploy before clicking Auto-fix. Collapse remains available.
+  const [open, setOpen] = useState(!!f.fix);
   const canAutoFix = f.fix && (f.status === "eval_passed" || f.status === "detected");
   const isPending = f.status === "review_pending";
   return (
@@ -490,8 +500,8 @@ function FailureRow({ f, checked, onCheck, selectable }: { f: Failure; checked: 
           {f.fix && (
             <button onClick={() => setOpen((o) => !o)}
               className="px-1.5 py-1 rounded border border-border hover:bg-accent/30 text-[10px] flex items-center gap-1"
-              title="Preview before / after">
-              <Eye className="w-3 h-3" />
+              title={open ? "Hide preview" : "Show preview"}>
+              {open ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
             </button>
           )}
           {canAutoFix && (
@@ -508,7 +518,16 @@ function FailureRow({ f, checked, onCheck, selectable }: { f: Failure; checked: 
         </div>
       </div>
       {open && f.fix && (
-        <div className="px-5 pb-3 bg-background/40">
+        <div className="px-5 pb-3 pt-1 bg-background/40 space-y-2">
+          <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest text-muted-foreground">
+            <span>Eval</span>
+            <span className="text-sev-low">Grounding {f.fix.groundingScore}/100</span>
+            <span className="text-sev-low">Hallucination {f.fix.hallucinationScore}/100</span>
+            <span className="text-muted-foreground">·</span>
+            <span className="text-foreground/70 normal-case tracking-normal truncate" title={f.fix.reasoning}>
+              {f.fix.reasoning}
+            </span>
+          </div>
           <DiffPane before={f.fix.before} after={f.fix.after} pillar={f.pillar} maxHeight={200} />
         </div>
       )}

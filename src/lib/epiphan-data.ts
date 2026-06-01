@@ -37,6 +37,31 @@ export const SEVERITY_COLOR: Record<Severity, string> = {
   LOW: "var(--sev-low)",
 };
 
+// ─── Deterministic PRNG ──────────────────────────────────────────────────
+// Keep SSR HTML byte-equal to first client render. Math.random in seed data
+// causes hydration mismatches. Use mulberry32 with a fixed seed instead.
+export function mulberry32(seed: number) {
+  let t = seed >>> 0;
+  return () => {
+    t = (t + 0x6D2B79F5) >>> 0;
+    let x = t;
+    x = Math.imul(x ^ (x >>> 15), x | 1);
+    x ^= x + Math.imul(x ^ (x >>> 7), x | 61);
+    return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+  };
+}
+export function seededInt(rng: () => number, min: number, max: number) {
+  return min + Math.floor(rng() * (max - min + 1));
+}
+export function hashStr(s: string): number {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
 export type Failure = {
   id: string;
   auditId: string;
@@ -59,12 +84,16 @@ export type Fix = {
   before: string;
   after: string;
   evalScores: {
-    factPreservation: number; // 0-100
+    factPreservation: number;
     semanticDensity: number;
     structuralSyntax: number;
     objectAccuracy: number;
     overall: "PASS" | "FAIL";
   };
+  hallucinationScore: number;
+  groundingScore: number;
+  reasoning: string;
+  userFeedback?: "pass" | "fail";
   rollbackSnapshot?: string;
 };
 
@@ -78,6 +107,7 @@ export type AuditRecord = {
   failures: Failure[];
   createdAt: number;
   completedAt?: number;
+  ctx?: ProductContext;
 };
 
 export type TraceLog = {
@@ -94,28 +124,22 @@ export type TraceLog = {
   status: "success" | "failure";
 };
 
-// Seeded failure catalog used by the simulator
 export const FAILURE_CATALOG: Omit<Failure, "id" | "auditId" | "status" | "detectedAt" | "fix">[] = [
-  // P1
   { pillar: "P1", failureId: "F1.1", failureName: "Missing llms.txt", severity: "CRITICAL", detail: "No /llms.txt manifest detected. AI crawlers cannot discover content priorities.", isAutofixable: true, requiresHuman: false },
   { pillar: "P1", failureId: "F1.2", failureName: "GPTBot blocked in robots.txt", severity: "CRITICAL", detail: "User-agent GPTBot is explicitly disallowed from /. Store is invisible to ChatGPT search.", isAutofixable: true, requiresHuman: false },
   { pillar: "P1", failureId: "F1.3", failureName: "Slow TTFB (3.2s)", severity: "HIGH", detail: "Time to first byte exceeds 2000ms threshold. AI crawlers will time out.", isAutofixable: false, requiresHuman: true },
   { pillar: "P1", failureId: "F1.5", failureName: "Missing canonical tags", severity: "MEDIUM", detail: "12 product pages lack rel=canonical declarations.", isAutofixable: true, requiresHuman: false },
-  // P2
-  { pillar: "P2", failureId: "F2.1", failureName: "No Product JSON-LD", severity: "CRITICAL", detail: "Product schema markup absent from all 47 product pages.", isAutofixable: true, requiresHuman: false },
+  { pillar: "P2", failureId: "F2.1", failureName: "No Product JSON-LD", severity: "CRITICAL", detail: "Product schema markup absent from all product pages.", isAutofixable: true, requiresHuman: false },
   { pillar: "P2", failureId: "F2.2", failureName: "Invalid BreadcrumbList", severity: "HIGH", detail: "Breadcrumb schema present but missing required 'position' fields.", isAutofixable: true, requiresHuman: false },
   { pillar: "P2", failureId: "F2.3", failureName: "Missing Organization schema", severity: "MEDIUM", detail: "Root domain lacks Organization JSON-LD with sameAs links.", isAutofixable: true, requiresHuman: false },
   { pillar: "P2", failureId: "F2.4", failureName: "Unparseable product markup", severity: "HIGH", detail: "3 products contain malformed JSON-LD blocks.", isAutofixable: true, requiresHuman: false },
-  // P3
-  { pillar: "P3", failureId: "F3.1", failureName: "Thin descriptions (<150w)", severity: "CRITICAL", detail: "32 products have descriptions under 150 words. AI engines cannot extract context.", isAutofixable: false, requiresHuman: true },
+  { pillar: "P3", failureId: "F3.1", failureName: "Thin descriptions (<150w)", severity: "CRITICAL", detail: "Product descriptions under 150 words. AI engines cannot extract context.", isAutofixable: false, requiresHuman: true },
   { pillar: "P3", failureId: "F3.2", failureName: "Missing FAQ schema", severity: "HIGH", detail: "No FAQPage structured data found. Loss of long-tail visibility.", isAutofixable: false, requiresHuman: true },
   { pillar: "P3", failureId: "F3.3", failureName: "No scenario content", severity: "MEDIUM", detail: "Descriptions lack 'best for X' and use-case language.", isAutofixable: false, requiresHuman: true },
-  // P4
-  { pillar: "P4", failureId: "F4.1", failureName: "Missing alt-text", severity: "HIGH", detail: "184 product images have empty alt attributes.", isAutofixable: true, requiresHuman: true },
-  { pillar: "P4", failureId: "F4.2", failureName: "Generic alt-text (DSC_*)", severity: "MEDIUM", detail: "47 images use filename-style alt text (e.g. 'IMG_4521').", isAutofixable: true, requiresHuman: true },
-  { pillar: "P4", failureId: "F4.4", failureName: "Non-WebP assets", severity: "LOW", detail: "All product images served as JPEG. Larger payload, slower indexing.", isAutofixable: true, requiresHuman: false },
-  // P5
-  { pillar: "P5", failureId: "F5.1", failureName: "Zero brand citations", severity: "CRITICAL", detail: "Store not cited in any of 10 category probe queries via ChatGPT.", isAutofixable: false, requiresHuman: true },
+  { pillar: "P4", failureId: "F4.1", failureName: "Missing alt-text", severity: "HIGH", detail: "Product images have empty alt attributes.", isAutofixable: true, requiresHuman: true },
+  { pillar: "P4", failureId: "F4.2", failureName: "Generic alt-text (DSC_*)", severity: "MEDIUM", detail: "Images use filename-style alt text (e.g. 'IMG_4521').", isAutofixable: true, requiresHuman: true },
+  { pillar: "P4", failureId: "F4.4", failureName: "Non-WebP assets", severity: "LOW", detail: "Product images served as JPEG. Larger payload, slower indexing.", isAutofixable: true, requiresHuman: false },
+  { pillar: "P5", failureId: "F5.1", failureName: "Zero brand citations", severity: "CRITICAL", detail: "Brand not cited in any of 10 category probe queries via ChatGPT.", isAutofixable: false, requiresHuman: true },
   { pillar: "P5", failureId: "F5.2", failureName: "Competitor dominance", severity: "HIGH", detail: "Top competitor cited in 8/10 AI answers. Share of voice: 0%.", isAutofixable: false, requiresHuman: true },
 ];
 
@@ -127,27 +151,113 @@ export const MODEL_MATRIX = {
   probe: { name: "Llama 3.1 8B (probes)", size: "8B", costPer1k: 0.0, role: "Category probes" },
 } as const;
 
-export function fixTemplateFor(f: Failure): { type: string; model: string; before: string; after: string } {
+// ─── Product context inferred from URL ──────────────────────────────────
+// Threaded into fix templates so audits feel real — Swarovski URL produces
+// "Swan Pendant" fixtures, Nike URL produces footwear fixtures, etc. Without
+// a real scraper (Firecrawl, etc.) this is the source of truth for the demo.
+export type ProductContext = {
+  brand: string;
+  productName: string;
+  category: string;
+  domain: string;
+  currency: string;
+  price: string;
+  sku: string;
+  material: string;
+  primaryColor: string;
+  imageDesc: string;
+  handle: string;
+  taxonomy: string[];
+  industry: string;
+};
+
+const KNOWN: { match: RegExp; ctx: (slug: string) => Partial<ProductContext> }[] = [
+  { match: /swarovski/i, ctx: (s) => ({ brand: "Swarovski", industry: "Luxury Jewelry & Crystal", category: "Pendants & Necklaces", material: "Lead-glass crystal with rhodium plating", primaryColor: "White", currency: "EUR", price: "129.00", taxonomy: ["Jewelry / Necklaces", "Jewelry / Earrings", "Jewelry / Bracelets", "Watches", "Home / Decoration"], imageDesc: titleFromSlug(s) + " on a soft grey reflective surface, studio lighting catching crystal facets" }) },
+  { match: /nike|adidas|puma|asics|newbalance|onrunning|hoka/i, ctx: () => ({ industry: "Athletic Footwear & Apparel", category: "Performance Footwear", material: "Engineered mesh upper with foam midsole", primaryColor: "Black/White", currency: "EUR", price: "139.99", taxonomy: ["Footwear / Running", "Footwear / Lifestyle", "Apparel / Performance", "Accessories"], imageDesc: "Three-quarter side view of running shoe on white seamless background, side profile of mesh upper visible" }) },
+  { match: /sephora|ulta|loreal|douglas|notino/i, ctx: () => ({ industry: "Beauty & Personal Care", category: "Skincare & Makeup", material: "Cosmetic formulation", primaryColor: "—", currency: "EUR", price: "39.00", taxonomy: ["Skincare", "Makeup", "Fragrance", "Haircare", "Tools"], imageDesc: "Product bottle on soft pink background, dropper visible, ingredient label readable" }) },
+  { match: /zara|hm|uniqlo|mango|cos|asos|zalando/i, ctx: (s) => ({ industry: "Fashion & Apparel", category: "Apparel", material: "Cotton blend", primaryColor: "Stone", currency: "EUR", price: "59.95", taxonomy: ["Women / Tops", "Women / Bottoms", "Men / Tops", "Men / Bottoms", "Kids", "Accessories"], imageDesc: titleFromSlug(s) + " on neutral model, full-body on white seamless background" }) },
+  { match: /ikea|wayfair|maisonsdumonde/i, ctx: (s) => ({ industry: "Home & Furniture", category: "Furniture", material: "FSC-certified oak veneer", primaryColor: "Natural oak", currency: "EUR", price: "249.00", taxonomy: ["Living Room", "Bedroom", "Kitchen", "Dining", "Outdoor", "Storage"], imageDesc: titleFromSlug(s) + " styled in a minimalist Scandinavian living room with natural light" }) },
+  { match: /amazon|ebay|otto|bol\.com|mediamarkt/i, ctx: () => ({ industry: "General Marketplace", category: "Electronics & Lifestyle", material: "—", primaryColor: "—", currency: "EUR", price: "—", taxonomy: ["Electronics", "Home & Kitchen", "Fashion", "Beauty", "Sports", "Books"], imageDesc: "Product on white background, marketplace-standard catalog photo" }) },
+  { match: /merino|wool|knit|acme-apparel/i, ctx: () => ({ brand: "Acme Apparel", industry: "Premium Apparel", category: "Knitwear", material: "100% Italian merino wool, 19.5-micron yarn from Biella", primaryColor: "Charcoal", currency: "EUR", price: "189.00", taxonomy: ["Knitwear", "Outerwear", "Accessories"], imageDesc: "Charcoal grey merino wool crew-neck sweater on white background, ribbed collar and cuffs visible" }) },
+];
+
+function titleFromSlug(slug: string): string {
+  if (!slug) return "Featured Product";
+  return slug
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .filter((w) => w.length > 1 && !/^\d+$/.test(w))
+    .slice(0, 6)
+    .map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
+
+export function inferProductContext(rawUrl: string): ProductContext {
+  let url: URL | null = null;
+  try {
+    url = new URL(rawUrl.startsWith("http") || rawUrl.startsWith("sku://") ? rawUrl : `https://${rawUrl}`);
+  } catch { /* noop */ }
+  const domain = url ? url.hostname.replace(/^www\./, "") : rawUrl.slice(0, 40);
+  const brandGuess = domain.split(".")[0].replace(/-/g, " ");
+  // Find the longest "wordy" path segment as the product slug
+  const segments = url ? url.pathname.split("/").filter((s) => s && s.length > 2 && !/^[a-z]{2}-[A-Z]{2}$/.test(s) && !/^p-/.test(s)) : [];
+  const productSlug = segments.sort((a, b) => b.length - a.length)[0] ?? "";
+  const productName = productSlug ? titleFromSlug(productSlug) : `${brandGuess[0].toUpperCase()}${brandGuess.slice(1)} Featured Product`;
+
+  let base: Partial<ProductContext> = {};
+  for (const k of KNOWN) {
+    if (k.match.test(rawUrl) || k.match.test(domain)) {
+      base = k.ctx(productSlug);
+      break;
+    }
+  }
+
+  const rng = mulberry32(hashStr(domain + productName));
+  const skuPrefix = (base.brand ?? brandGuess).slice(0, 3).toUpperCase().replace(/[^A-Z]/g, "X");
+  const sku = `${skuPrefix}-${seededInt(rng, 1000, 9999)}`;
+
+  return {
+    brand: base.brand ?? (brandGuess[0].toUpperCase() + brandGuess.slice(1)),
+    productName: base.productName ?? productName,
+    category: base.category ?? "Featured Products",
+    domain,
+    currency: base.currency ?? "EUR",
+    price: base.price ?? `${seededInt(rng, 29, 499)}.00`,
+    sku,
+    material: base.material ?? "—",
+    primaryColor: base.primaryColor ?? "—",
+    imageDesc: base.imageDesc ?? `${productName} product photo on white background`,
+    handle: productSlug || productName.toLowerCase().replace(/\s+/g, "-"),
+    taxonomy: base.taxonomy ?? ["Featured", "Collections", "Categories", "Sale"],
+    industry: base.industry ?? "E-commerce",
+  };
+}
+
+export const DEMO_CTX: ProductContext = inferProductContext("https://acme-apparel.myshopify.com/products/merino-crew-charcoal");
+
+// ─── Fix templates (context-aware) ──────────────────────────────────────
+export function fixTemplateFor(f: Failure, ctx: ProductContext = DEMO_CTX): { type: string; model: string; before: string; after: string } {
+  const baseUrl = `https://${ctx.domain}`;
   switch (f.failureId) {
     case "F1.1":
       return {
         type: "llms_txt",
         model: "phi4",
         before: "// No llms.txt file present at /llms.txt",
-        after: `# Acme Apparel — LLM Manifest
+        after: `# ${ctx.brand} — LLM Manifest
 # Generated by epiphanAI
 
-> Premium EU-made apparel. Focus pages for AI ingestion below.
+> ${ctx.industry}. Focus pages for AI ingestion below.
 
 ## Core Pages
 - [Homepage](/) — Brand overview and category navigation
 - [About](/pages/about) — Provenance, materials, sustainability
-- [Sizing](/pages/sizing-guide) — Fit & measurement reference
+- [Sizing & Specs](/pages/specs) — Reference data
 
 ## Product Categories
-- [Jackets](/collections/jackets)
-- [Knitwear](/collections/knitwear)
-- [Accessories](/collections/accessories)
+${ctx.taxonomy.slice(0, 4).map((t) => `- [${t}](/collections/${t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")})`).join("\n")}
 
 ## Policies
 - [Shipping & Returns](/policies/refund-policy)
@@ -189,16 +299,16 @@ Allow: /`,
         after: `{
   "@context": "https://schema.org/",
   "@type": "Product",
-  "name": "Merino Crew Sweater",
-  "image": "https://cdn.shopify.com/.../merino-crew.webp",
-  "description": "100% Italian merino wool crew-neck sweater, knitted in Biella.",
-  "sku": "MC-CREW-001",
-  "brand": { "@type": "Brand", "name": "Acme Apparel" },
+  "name": "${ctx.productName}",
+  "image": "${baseUrl}/cdn/${ctx.handle}.webp",
+  "description": "${ctx.material === "—" ? ctx.productName : ctx.material}.",
+  "sku": "${ctx.sku}",
+  "brand": { "@type": "Brand", "name": "${ctx.brand}" },
   "offers": {
     "@type": "Offer",
-    "url": "https://acme.eu/products/merino-crew",
-    "priceCurrency": "EUR",
-    "price": "189.00",
+    "url": "${baseUrl}/products/${ctx.handle}",
+    "priceCurrency": "${ctx.currency}",
+    "price": "${ctx.price}",
     "availability": "https://schema.org/InStock"
   },
   "aggregateRating": {
@@ -214,15 +324,15 @@ Allow: /`,
         model: "llama33",
         before: `{ "@type": "BreadcrumbList", "itemListElement": [
   { "name": "Home" },
-  { "name": "Knitwear" }
+  { "name": "${ctx.category}" }
 ]}`,
         after: `{
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
   "itemListElement": [
-    { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://acme.eu/" },
-    { "@type": "ListItem", "position": 2, "name": "Knitwear", "item": "https://acme.eu/collections/knitwear" },
-    { "@type": "ListItem", "position": 3, "name": "Merino Crew", "item": "https://acme.eu/products/merino-crew" }
+    { "@type": "ListItem", "position": 1, "name": "Home", "item": "${baseUrl}/" },
+    { "@type": "ListItem", "position": 2, "name": "${ctx.category}", "item": "${baseUrl}/collections/${ctx.category.toLowerCase().replace(/[^a-z0-9]+/g, "-")}" },
+    { "@type": "ListItem", "position": 3, "name": "${ctx.productName}", "item": "${baseUrl}/products/${ctx.handle}" }
   ]
 }`,
       };
@@ -234,12 +344,12 @@ Allow: /`,
         after: `{
   "@context": "https://schema.org",
   "@type": "Organization",
-  "name": "Acme Apparel",
-  "url": "https://acme.eu",
-  "logo": "https://acme.eu/logo.svg",
+  "name": "${ctx.brand}",
+  "url": "${baseUrl}",
+  "logo": "${baseUrl}/logo.svg",
   "sameAs": [
-    "https://instagram.com/acmeapparel",
-    "https://linkedin.com/company/acme-apparel"
+    "https://instagram.com/${ctx.brand.toLowerCase().replace(/\s+/g, "")}",
+    "https://linkedin.com/company/${ctx.brand.toLowerCase().replace(/\s+/g, "-")}"
   ]
 }`,
       };
@@ -247,28 +357,28 @@ Allow: /`,
       return {
         type: "schema_injection",
         model: "llama33",
-        before: `{"@type":"Product","name":"Cashmere Scarf",,"price":129}`,
+        before: `{"@type":"Product","name":"${ctx.productName}",,"price":${ctx.price}}`,
         after: `{
   "@context": "https://schema.org/",
   "@type": "Product",
-  "name": "Cashmere Scarf",
-  "offers": { "@type": "Offer", "price": "129.00", "priceCurrency": "EUR" }
+  "name": "${ctx.productName}",
+  "offers": { "@type": "Offer", "price": "${ctx.price}", "priceCurrency": "${ctx.currency}" }
 }`,
       };
     case "F3.1":
       return {
         type: "copy_rewrite",
         model: "llama33",
-        before: `Soft merino crew. Made in Italy. Available in 4 colours.`,
-        after: `Crafted from 100% Italian merino wool sourced in Biella, this crew-neck sweater is the year-round workhorse for capsule wardrobes. The 19.5-micron yarn is fine enough to wear next to skin, breathable enough for spring, and dense enough to layer through autumn. Reinforced ribbing at the collar, cuffs and hem holds its shape after dozens of cold washes.
+        before: `${ctx.productName}. ${ctx.material === "—" ? "Available now." : ctx.material + "."}`,
+        after: `${ctx.material === "—" ? ctx.productName : ctx.material} — ${ctx.productName} is engineered for the way ${ctx.industry.toLowerCase()} customers actually use it: built to last, easy to care for, and grounded in real provenance. Sourced and finished with quality controls that are documented end-to-end.
 
-**Best for:** office layering, smart-casual dinners, weekend coats. Pairs naturally with denim, wool trousers and selvedge chinos.
+**Best for:** everyday use, gift occasions, and as a long-term staple in the ${ctx.category.toLowerCase()} category. Pairs naturally with the rest of the ${ctx.brand} catalog.
 
-**Care:** cold hand-wash or wool cycle, dry flat. Avoid tumble drying. Pilling resistance verified at 4.5/5 on the Martindale scale.
+**Care & specs:** follow brand care guidance on the product label; warranty and returns covered per policy. Material specifications and dimensions verified per SKU ${ctx.sku}.
 
-**FAQ — Does it run small?** No. We use true EU sizing — order your normal size. **Is it itchy?** No. 19.5-micron merino is below the skin's prickle threshold.
+**FAQ — Is it true to size?** Yes, true to standard sizing for the ${ctx.category}. **Where does it ship from?** EU fulfillment center, 2–4 business days.
 
-Available in Charcoal, Stone, Forest and Ecru. Designed in Stockholm, knitted in Italy. Carbon-traceable supply chain.`,
+Available in ${ctx.primaryColor === "—" ? "multiple finishes" : ctx.primaryColor + " and complementary tones"}. Designed and quality-controlled by ${ctx.brand}.`,
       };
     case "F3.2":
       return {
@@ -279,7 +389,7 @@ Available in Charcoal, Stone, Forest and Ecru. Designed in Stockholm, knitted in
   "@context": "https://schema.org",
   "@type": "FAQPage",
   "mainEntity": [
-    { "@type": "Question", "name": "Is merino itchy?", "acceptedAnswer": { "@type": "Answer", "text": "No. Our 19.5-micron yarn is below the prickle threshold." }},
+    { "@type": "Question", "name": "Is the ${ctx.productName} true to size?", "acceptedAnswer": { "@type": "Answer", "text": "Yes — standard sizing for ${ctx.category}." }},
     { "@type": "Question", "name": "Do you ship to the EU?", "acceptedAnswer": { "@type": "Answer", "text": "Yes — free EU shipping over €100, 2–4 business days." }}
   ]
 }`,
@@ -288,36 +398,36 @@ Available in Charcoal, Stone, Forest and Ecru. Designed in Stockholm, knitted in
       return {
         type: "copy_rewrite",
         model: "llama33",
-        before: `A timeless crew sweater.`,
-        after: `Best for office layering, smart-casual dinners, and weekend wear. Compared to traditional lambswool, our merino is finer and less prone to pilling. Pairs naturally with selvedge denim or wool trousers.`,
+        before: `${ctx.productName} — a great choice.`,
+        after: `Best for everyday ${ctx.category.toLowerCase()} use, gifting, and as a staple in the ${ctx.brand} line. Compared to entry-level alternatives, the ${ctx.productName} delivers measurably better durability and finish. Pairs well across the broader ${ctx.industry.toLowerCase()} category.`,
       };
     case "F4.1":
       return {
         type: "alt_text",
         model: "vision",
-        before: `<img src="merino-crew-charcoal.webp" alt="">`,
-        after: `<img src="merino-crew-charcoal.webp" alt="Charcoal grey merino wool crew-neck sweater on white background, ribbed collar and cuffs visible">`,
+        before: `<img src="${ctx.handle}.webp" alt="">`,
+        after: `<img src="${ctx.handle}.webp" alt="${ctx.imageDesc}">`,
       };
     case "F4.2":
       return {
         type: "alt_text",
         model: "vision",
         before: `<img src="..." alt="IMG_4521.jpg">`,
-        after: `<img src="..." alt="Stone-coloured cashmere scarf draped over wooden chair, soft natural light from window">`,
+        after: `<img src="..." alt="${ctx.imageDesc}">`,
       };
     case "F1.5":
       return {
         type: "canonical",
         model: "phi4",
         before: "// 12 product pages: no canonical link.",
-        after: `<link rel="canonical" href="https://acme.eu/products/merino-crew" />`,
+        after: `<link rel="canonical" href="${baseUrl}/products/${ctx.handle}" />`,
       };
     case "F4.4":
       return {
         type: "image_format",
         model: "phi4",
-        before: "merino-crew-charcoal.jpg (412 KB)",
-        after: "merino-crew-charcoal.webp (118 KB) — 71% size reduction",
+        before: `${ctx.handle}.jpg (412 KB)`,
+        after: `${ctx.handle}.webp (118 KB) — 71% size reduction`,
       };
     default:
       return {
@@ -329,32 +439,26 @@ Available in Charcoal, Stone, Forest and Ecru. Designed in Stockholm, knitted in
   }
 }
 
-
-
-// Per-failure human-readable description of what the deployed fix actually changes.
-// Used in toasts, review-queue summaries and history entries — never a generic
-// "Schema fix deployed" message.
-export function describeFix(f: Pick<Failure, "failureId" | "failureName" | "pillar">): {
+export function describeFix(f: Pick<Failure, "failureId" | "failureName" | "pillar">, ctx: ProductContext = DEMO_CTX): {
   title: string;
   detail: string;
 } {
   switch (f.failureId) {
-    case "F1.1": return { title: "llms.txt manifest published", detail: "Created /llms.txt with 10 prioritized URLs (homepage, collections, policies)." };
+    case "F1.1": return { title: "llms.txt manifest published", detail: `Created /llms.txt for ${ctx.brand} with prioritized URLs (homepage, ${ctx.taxonomy.slice(0, 2).join(", ")}, policies).` };
     case "F1.2": return { title: "robots.txt opened to AI crawlers", detail: "Allowed GPTBot, OAI-SearchBot, PerplexityBot and ClaudeBot. Previous Disallow rule snapshot stored." };
-    case "F1.5": return { title: "Canonical tags injected", detail: "Added rel=canonical to 12 product pages, consolidating duplicate URL variants." };
-    case "F2.1": return { title: "Product JSON-LD deployed", detail: "Injected schema.org/Product markup (name, sku, price, brand, offers, aggregateRating) on 47 product pages." };
-    case "F2.2": return { title: "BreadcrumbList repaired", detail: "Added required position fields (1→Home, 2→Knitwear, 3→Product) and absolute item URLs." };
-    case "F2.3": return { title: "Organization schema added", detail: "Published Organization JSON-LD with logo and sameAs links to Instagram and LinkedIn." };
+    case "F1.5": return { title: "Canonical tags injected", detail: `Added rel=canonical for ${ctx.productName} (SKU ${ctx.sku}) and 11 sibling product pages.` };
+    case "F2.1": return { title: "Product JSON-LD deployed", detail: `Injected schema.org/Product markup for ${ctx.productName} — name, sku, price (${ctx.currency} ${ctx.price}), brand, offers, aggregateRating.` };
+    case "F2.2": return { title: "BreadcrumbList repaired", detail: `Added required position fields (1→Home, 2→${ctx.category}, 3→${ctx.productName}) and absolute item URLs.` };
+    case "F2.3": return { title: "Organization schema added", detail: `Published Organization JSON-LD for ${ctx.brand} with logo and sameAs links.` };
     case "F2.4": return { title: "Malformed JSON-LD rewritten", detail: "Repaired 3 unparseable Product blocks (trailing commas, missing offer wrappers)." };
-    case "F3.1": return { title: "Product description expanded", detail: "Rewrote thin copy from 8 to 412 words — added materials, use-cases, care, and FAQ block." };
-    case "F3.2": return { title: "FAQPage schema deployed", detail: "Added structured Q&A covering sizing, material itch, and EU shipping." };
-    case "F3.3": return { title: "Scenario language added", detail: "Inserted 'best for…' use-cases and competitor comparisons into product copy." };
-    case "F4.1": return { title: "Alt-text generated for 184 images", detail: "Vision model wrote descriptive alt text — colour, material, garment type, setting." };
-    case "F4.2": return { title: "Generic filename alts replaced", detail: "Replaced 47 'IMG_*.jpg' alt strings with descriptive text from vision model." };
+    case "F3.1": return { title: "Product description expanded", detail: `Rewrote thin copy for ${ctx.productName} from 8 to 412 words — added materials, use-cases, care, and FAQ block.` };
+    case "F3.2": return { title: "FAQPage schema deployed", detail: `Added structured Q&A covering sizing, material, and EU shipping for ${ctx.productName}.` };
+    case "F3.3": return { title: "Scenario language added", detail: `Inserted 'best for…' use-cases and competitor comparisons into ${ctx.productName} copy.` };
+    case "F4.1": return { title: `Alt-text generated for ${ctx.brand} images`, detail: `Vision model wrote descriptive alt text — colour, material, ${ctx.category} type, setting.` };
+    case "F4.2": return { title: "Generic filename alts replaced", detail: `Replaced 47 'IMG_*.jpg' alt strings with descriptive text from vision model for ${ctx.brand} catalog.` };
     case "F4.4": return { title: "Images converted to WebP", detail: "All product imagery re-encoded to WebP — average 71% size reduction (412KB → 118KB)." };
     case "F5.1":
-    case "F5.2": return { title: "SoV remediation plan queued", detail: "Probe results stored; outreach + content roadmap drafted for human review." };
+    case "F5.2": return { title: "SoV remediation plan queued", detail: `Probe results stored; outreach + content roadmap drafted for ${ctx.brand} vs category competitors.` };
     default: return { title: `${f.failureName} resolved`, detail: "Fix deployed to the live store." };
   }
 }
-
