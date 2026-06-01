@@ -80,7 +80,7 @@ function Hero() {
             <Link to="/start" className="px-5 py-2.5 rounded bg-primary text-primary-foreground hover:opacity-90 inline-flex items-center gap-2 text-sm font-medium">
               Run a live audit <ArrowRight className="w-4 h-4" />
             </Link>
-            <Link to="/brand-voice" className="px-5 py-2.5 rounded border border-primary/40 bg-primary/8 text-primary hover:bg-primary/15 inline-flex items-center gap-2 text-sm font-medium transition">
+            <Link to="/monitoring" className="px-5 py-2.5 rounded border border-primary/40 bg-primary/8 text-primary hover:bg-primary/15 inline-flex items-center gap-2 text-sm font-medium transition">
               <Mic className="w-4 h-4" /> Setup brand monitoring
             </Link>
             <Link to="/admin" className="px-5 py-2.5 rounded border border-border hover:bg-accent/30 text-sm">
