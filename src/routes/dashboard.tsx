@@ -6,7 +6,7 @@ import { DiffPane } from "@/components/DiffPane";
 import { useEpiphan } from "@/lib/epiphan-store";
 import { PILLARS, PillarId, SEVERITY_WEIGHT, Failure } from "@/lib/epiphan-data";
 import { toCsv, toJson, downloadFile, copyToClipboard, toWebhookPayload } from "@/lib/epiphan-export";
-import { Play, Loader2, CheckCircle2, ArrowRight, Zap, Eye, EyeOff, FileText, FileJson, Copy, Check, AlertCircle, Pencil, X } from "lucide-react";
+import { Play, Loader2, CheckCircle2, ArrowRight, Zap, Eye, EyeOff, FileText, FileJson, Copy, Check, AlertCircle, Pencil, X, RefreshCw } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { toast } from "sonner";
 
@@ -484,6 +484,7 @@ function FailureRow({ f, checked, onCheck, selectable }: { f: Failure; checked: 
   const approveFix = useEpiphan((s) => s.approveFix);
   const rejectFix = useEpiphan((s) => s.rejectFix);
   const editFix = useEpiphan((s) => s.editFix);
+  const regenerateFix = useEpiphan((s) => s.regenerateFix);
   const evalThresholds = useEpiphan((s) => s.evalThresholds);
 
   const isManual = !f.fix;
@@ -497,6 +498,7 @@ function FailureRow({ f, checked, onCheck, selectable }: { f: Failure; checked: 
   const [rejectPending, setRejectPending] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
 
+  const isGenerating = f.status === "generating";
   const canAutoFix = f.fix && (f.status === "eval_passed" || f.status === "detected");
   const isPending = f.status === "review_pending";
 
@@ -550,6 +552,17 @@ function FailureRow({ f, checked, onCheck, selectable }: { f: Failure; checked: 
               className="px-2 py-1 rounded border border-primary/40 text-primary hover:bg-primary/10 text-[10px] flex items-center gap-1">
               <Zap className="w-3 h-3" /> Fix
             </button>
+          )}
+          {isEvalFailed && !isGenerating && (
+            <button onClick={() => regenerateFix(f.id)}
+              className="px-2 py-1 rounded border border-sev-medium/40 text-sev-medium hover:bg-sev-medium/10 text-[10px] flex items-center gap-1">
+              <RefreshCw className="w-3 h-3" /> Retry
+            </button>
+          )}
+          {isGenerating && (
+            <span className="px-2 py-1 text-[10px] text-primary flex items-center gap-1">
+              <Loader2 className="w-3 h-3 animate-spin" /> Generating…
+            </span>
           )}
           {isPending && !open && (
             <button onClick={() => setOpen(true)}
@@ -684,9 +697,15 @@ function FailureRow({ f, checked, onCheck, selectable }: { f: Failure; checked: 
                         <X className="w-3 h-3" /> Reject
                       </button>
                       {isEvalFailed && (
-                        <span className="text-[10px] text-muted-foreground ml-1">
-                          The failed scores are shown above — approving deploys the fix as-is, bypassing those checks
-                        </span>
+                        <>
+                          <button onClick={() => regenerateFix(f.id)}
+                            className="px-3 py-1.5 rounded border border-sev-medium/50 text-sev-medium hover:bg-sev-medium/10 text-[11px] flex items-center gap-1.5">
+                            <RefreshCw className="w-3 h-3" /> Regenerate
+                          </button>
+                          <span className="text-[10px] text-muted-foreground ml-1">
+                            The failed scores are shown above — approving deploys the fix as-is, bypassing those checks
+                          </span>
+                        </>
                       )}
                     </>
                   )}

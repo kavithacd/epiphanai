@@ -110,6 +110,7 @@ interface State {
   getAudit: (id: string) => AuditRecord | undefined;
   clearAll: () => void;
   autoFix: (failureId: string) => void;
+  regenerateFix: (failureId: string) => void;
   setIntegration: <K extends keyof IntegrationConfig>(key: K, value: IntegrationConfig[K]) => void;
   setAutoDeployEnabled: (enabled: boolean) => void;
   setEvalThreshold: (key: keyof EvalThresholds, value: number) => void;
@@ -367,6 +368,89 @@ export const useEpiphan = create<State>((set, get) => ({
   },
 
   autoFix: (failureId) => { get().approveFix(failureId); },
+
+  regenerateFix: (failureId) => {
+    const state = get();
+    let targetFailure: Failure | undefined;
+    let targetAuditId: string | undefined;
+    let targetCtx: ReturnType<typeof inferProductContext> | undefined;
+
+    for (const a of state.audits) {
+      const f = a.failures.find((x) => x.id === failureId);
+      if (f) { targetFailure = f; targetAuditId = a.id; targetCtx = a.ctx; break; }
+    }
+    if (!targetFailure || !targetAuditId) return;
+
+    set((s): Partial<State> => ({
+      audits: s.audits.map((a) => a.id !== targetAuditId ? a : {
+        ...a,
+        failures: a.failures.map((f) => f.id !== failureId ? f : { ...f, status: "generating" }),
+      }),
+    }));
+
+    toast.message("Regenerating fix…", { description: `Running AI generation for ${targetFailure.failureName}` });
+
+    const thresholds = get().evalThresholds;
+    const ctx = targetCtx!;
+    const failure = targetFailure;
+    const auditId = targetAuditId;
+
+    setTimeout(() => {
+      const tpl = fixTemplateFor(failure, ctx);
+      const fp = 94 + Math.floor(Math.random() * 7);
+      const sd = 86 + Math.floor(Math.random() * 15);
+      const ss = 92 + Math.floor(Math.random() * 9);
+      const oa = 90 + Math.floor(Math.random() * 11);
+      const grounding = 92 + Math.floor(Math.random() * 8);
+      const overall: "PASS" | "FAIL" =
+        fp >= thresholds.factPreservation &&
+        sd >= thresholds.semanticDensity &&
+        ss >= thresholds.structuralSyntax &&
+        oa >= thresholds.objectAccuracy
+          ? "PASS" : "FAIL";
+
+      const newFix: Fix = {
+        id: uid(), fixType: tpl.type, generatedBy: tpl.model,
+        before: tpl.before, after: tpl.after,
+        evalScores: { factPreservation: fp, semanticDensity: sd, structuralSyntax: ss, objectAccuracy: oa, overall },
+        hallucinationScore: 100 - fp,
+        groundingScore: grounding,
+        reasoning: judgeReasoning(failure.pillar, tpl.type, fp, grounding),
+        rollbackSnapshot: tpl.before,
+      };
+
+      const newStatus = overall === "FAIL" ? "eval_failed" : failure.requiresHuman ? "review_pending" : "eval_passed";
+
+      set((s): Partial<State> => ({
+        audits: s.audits.map((a) => a.id !== auditId ? a : {
+          ...a,
+          failures: a.failures.map((f) => f.id !== failureId ? f : { ...f, fix: newFix, status: newStatus }),
+        }),
+      }));
+
+      logTrace(set, get, {
+        model: MODEL_MATRIX[tpl.model as keyof typeof MODEL_MATRIX]?.name ?? tpl.model,
+        workflow: `WF-0${failure.pillar === "P1" ? 8 : failure.pillar === "P2" ? 9 : failure.pillar === "P3" ? 10 : 11} ${tpl.type} (regen)`,
+        promptHash: hash(), operator: "consultant@tessera.eu",
+        durationMs: 600 + Math.floor(Math.random() * 1800),
+        tokensIn: 240 + Math.floor(Math.random() * 800),
+        tokensOut: 80 + Math.floor(Math.random() * 600),
+        costUsd: 0, status: "success",
+      });
+      logTrace(set, get, {
+        model: "Llama 3.3 (Judge)", workflow: "WF-12 Eval Gate (regen)",
+        promptHash: hash(), operator: "system",
+        durationMs: 400 + Math.floor(Math.random() * 600),
+        tokensIn: 320, tokensOut: 64, costUsd: 0, status: "success",
+      });
+
+      if (overall === "PASS") {
+        toast.success("Regenerated fix passed eval gate", { description: `${failure.failureName} is ready to approve.` });
+      } else {
+        toast.error("Regenerated fix failed eval gate again", { description: "You can try again, edit the fix, or lower thresholds in Settings." });
+      }
+    }, 1400 + Math.floor(Math.random() * 800));
+  },
 
   bulkApprove: (ids) => {
     const before = get().fixHistory.length;
