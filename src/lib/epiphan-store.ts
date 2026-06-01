@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import { toast } from "sonner";
 import {
   AuditRecord, Failure, Fix, FAILURE_CATALOG, fixTemplateFor, PILLARS,
@@ -193,7 +194,18 @@ function recordDeployment(
 }
 
 
-export const useEpiphan = create<State>((set, get) => ({
+const MAX_STR = 3000;
+function truncateFix(fix: Fix | undefined): Fix | undefined {
+  if (!fix) return fix;
+  return {
+    ...fix,
+    before: fix.before?.slice(0, MAX_STR),
+    after: fix.after?.slice(0, MAX_STR),
+    rollbackSnapshot: fix.rollbackSnapshot?.slice(0, MAX_STR),
+  };
+}
+
+export const useEpiphan = create<State>()(persist((set, get) => ({
   audits: [],
   activeAuditId: null,
   traces: [],
@@ -616,5 +628,25 @@ export const useEpiphan = create<State>((set, get) => ({
     toast.message("Rolled back", { description: "Pre-deploy snapshot restored on the live store." });
   },
 
+}), {
+  name: "epiphan-state-v1",
+  partialize: (state) => ({
+    audits: state.audits
+      .filter((a) => a.status !== "running")
+      .map((a) => ({
+        ...a,
+        failures: a.failures.map((f) => ({
+          ...f,
+          status: f.status === "generating" ? ("eval_failed" as const) : f.status,
+          fix: truncateFix(f.fix),
+        })),
+      })),
+    activeAuditId: state.activeAuditId,
+    guardrailEvents: state.guardrailEvents,
+    fixHistory: state.fixHistory,
+    totalCostUsd: state.totalCostUsd,
+    autoDeployEnabled: state.autoDeployEnabled,
+    evalThresholds: state.evalThresholds,
+  }),
 }));
 
