@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useEpiphan } from "@/lib/epiphan-store";
 import { mulberry32, hashStr, seededInt, resolveProbeQuery } from "@/lib/epiphan-data";
-import { Radio, ChevronDown, ExternalLink, Download } from "lucide-react";
+import { Radio, ChevronDown, ExternalLink, Download, X } from "lucide-react";
 
 export const Route = createFileRoute("/monitoring")({
   head: () => ({ meta: [{ title: "Brand Monitoring · epiphanAI" }] }),
@@ -145,6 +145,15 @@ function escapeCSV(value: string | number): string {
   return str;
 }
 
+type ExportSections = { sov: boolean; sentiment: boolean; competitors: boolean; queries: boolean };
+
+const EXPORT_SECTION_LABELS: { key: keyof ExportSections; label: string }[] = [
+  { key: "sov", label: "Share of Voice" },
+  { key: "sentiment", label: "Sentiment Breakdown" },
+  { key: "competitors", label: "Competitor Citations" },
+  { key: "queries", label: "Active Probe Queries" },
+];
+
 function buildCSV(params: {
   brand: string;
   industry: string;
@@ -155,8 +164,9 @@ function buildCSV(params: {
   sentimentByEngine: Record<string, { positive: number; neutral: number; negative: number }>;
   competitors: { name: string; perEngine: Record<string, number>; total: number }[];
   resolvedQueries: string[];
+  sections: ExportSections;
 }): string {
-  const { brand, industry, storeName, enabledEngines, probeTotal, sovByEngine, sentimentByEngine, competitors, resolvedQueries } = params;
+  const { brand, industry, storeName, enabledEngines, probeTotal, sovByEngine, sentimentByEngine, competitors, resolvedQueries, sections } = params;
   const rows: string[] = [];
 
   rows.push("# epiphanAI Brand Monitoring Report");
@@ -166,48 +176,56 @@ function buildCSV(params: {
   rows.push(`Report Date,${new Date().toLocaleDateString()}`);
   rows.push("");
 
-  rows.push("## Share of Voice");
-  rows.push(["Engine", "Brand SoV %", "Brand Cited", "Competitor Cited", "Total Probes"].map(escapeCSV).join(","));
-  for (const engine of enabledEngines) {
-    const { brandCited, competitorCited } = sovByEngine[engine.id] ?? { brandCited: 0, competitorCited: 0 };
-    const brandPct = probeTotal > 0 ? Math.round((brandCited / probeTotal) * 100) : 0;
-    rows.push([engine.label, `${brandPct}%`, brandCited, competitorCited, probeTotal].map(escapeCSV).join(","));
+  if (sections.sov) {
+    rows.push("## Share of Voice");
+    rows.push(["Engine", "Brand SoV %", "Brand Cited", "Competitor Cited", "Total Probes"].map(escapeCSV).join(","));
+    for (const engine of enabledEngines) {
+      const { brandCited, competitorCited } = sovByEngine[engine.id] ?? { brandCited: 0, competitorCited: 0 };
+      const brandPct = probeTotal > 0 ? Math.round((brandCited / probeTotal) * 100) : 0;
+      rows.push([engine.label, `${brandPct}%`, brandCited, competitorCited, probeTotal].map(escapeCSV).join(","));
+    }
+    rows.push("");
   }
-  rows.push("");
 
-  rows.push("## Sentiment Breakdown");
-  rows.push(["Engine", "Positive %", "Neutral %", "Negative %"].map(escapeCSV).join(","));
-  for (const engine of enabledEngines) {
-    const { positive, neutral, negative } = sentimentByEngine[engine.id];
-    rows.push([engine.label, `${positive}%`, `${neutral}%`, `${negative}%`].map(escapeCSV).join(","));
+  if (sections.sentiment) {
+    rows.push("## Sentiment Breakdown");
+    rows.push(["Engine", "Positive %", "Neutral %", "Negative %"].map(escapeCSV).join(","));
+    for (const engine of enabledEngines) {
+      const { positive, neutral, negative } = sentimentByEngine[engine.id];
+      rows.push([engine.label, `${positive}%`, `${neutral}%`, `${negative}%`].map(escapeCSV).join(","));
+    }
+    rows.push("");
   }
-  rows.push("");
 
-  rows.push("## Competitor Citations");
-  const compHeaders = ["Competitor", ...enabledEngines.map((e) => e.label), "Total Citations", `vs ${brand}`];
-  rows.push(compHeaders.map(escapeCSV).join(","));
+  if (sections.competitors) {
+    rows.push("## Competitor Citations");
+    const compHeaders = ["Competitor", ...enabledEngines.map((e) => e.label), "Total Citations", `vs ${brand}`];
+    rows.push(compHeaders.map(escapeCSV).join(","));
 
-  const brandTotalCited = enabledEngines.reduce((s, e) => s + (sovByEngine[e.id]?.brandCited ?? 0), 0);
-  const brandRowCols = [brand, ...enabledEngines.map((e) => String(sovByEngine[e.id]?.brandCited ?? 0)), String(brandTotalCited), "—"];
-  rows.push(brandRowCols.map(escapeCSV).join(","));
+    const brandTotalCited = enabledEngines.reduce((s, e) => s + (sovByEngine[e.id]?.brandCited ?? 0), 0);
+    const brandRowCols = [brand, ...enabledEngines.map((e) => String(sovByEngine[e.id]?.brandCited ?? 0)), String(brandTotalCited), "—"];
+    rows.push(brandRowCols.map(escapeCSV).join(","));
 
-  for (const comp of competitors) {
-    const delta = comp.total - brandTotalCited;
-    const cols = [
-      comp.name,
-      ...enabledEngines.map((e) => String(comp.perEngine[e.id] ?? 0)),
-      String(comp.total),
-      delta > 0 ? `+${delta}` : String(delta),
-    ];
-    rows.push(cols.map(escapeCSV).join(","));
+    for (const comp of competitors) {
+      const delta = comp.total - brandTotalCited;
+      const cols = [
+        comp.name,
+        ...enabledEngines.map((e) => String(comp.perEngine[e.id] ?? 0)),
+        String(comp.total),
+        delta > 0 ? `+${delta}` : String(delta),
+      ];
+      rows.push(cols.map(escapeCSV).join(","));
+    }
+    rows.push("");
   }
-  rows.push("");
 
-  rows.push("## Active Probe Queries");
-  rows.push(["#", "Query"].map(escapeCSV).join(","));
-  resolvedQueries.forEach((q, i) => {
-    rows.push([i + 1, q].map(escapeCSV).join(","));
-  });
+  if (sections.queries) {
+    rows.push("## Active Probe Queries");
+    rows.push(["#", "Query"].map(escapeCSV).join(","));
+    resolvedQueries.forEach((q, i) => {
+      rows.push([i + 1, q].map(escapeCSV).join(","));
+    });
+  }
 
   return rows.join("\n");
 }
@@ -218,6 +236,8 @@ function BrandMonitoring() {
   const probeQueries = useEpiphan((s) => s.probeQueries);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportSections, setExportSections] = useState<ExportSections>({ sov: true, sentiment: true, competitors: true, queries: true });
 
   // Empty state: no audits at all
   if (audits.length === 0) {
@@ -289,7 +309,13 @@ function BrandMonitoring() {
   const brandTotalCited = enabledEngines.reduce((s, e) => s + (sovByEngine[e.id]?.brandCited ?? 0), 0);
   const brandTotalProbes = enabledEngines.reduce((s, e) => s + probeTotal, 0);
 
-  function handleExportCSV() {
+  function openExportModal() {
+    setExportSections({ sov: true, sentiment: true, competitors: true, queries: true });
+    setShowExportModal(true);
+  }
+
+  function doExportCSV(sections: ExportSections) {
+    setShowExportModal(false);
     const dateStr = new Date().toISOString().slice(0, 10);
     const safeName = (audit.storeName ?? "store").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
     const filename = `${safeName}-monitoring-${dateStr}.csv`;
@@ -303,6 +329,7 @@ function BrandMonitoring() {
       sentimentByEngine,
       competitors,
       resolvedQueries,
+      sections,
     });
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
@@ -346,7 +373,7 @@ function BrandMonitoring() {
               </div>
             )}
             <button
-              onClick={handleExportCSV}
+              onClick={openExportModal}
               className="flex items-center gap-1.5 text-xs bg-surface border border-border rounded px-3 py-1.5 text-foreground hover:bg-accent/30 transition-colors cursor-pointer"
             >
               <Download className="w-3 h-3" />
@@ -582,6 +609,68 @@ function BrandMonitoring() {
           Monitoring data for {brand} · {industry} · {enabledEngines.map((e) => e.label).join(", ")} · sovereign local inference
         </div>
       </div>
+
+      {/* Export CSV section-selector modal */}
+      {showExportModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={() => setShowExportModal(false)}
+        >
+          <div
+            className="bg-surface border border-border rounded-xl shadow-2xl w-[340px] max-w-[calc(100vw-2rem)] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <div>
+                <div className="text-sm font-medium text-foreground">Export CSV</div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">Choose sections to include</div>
+              </div>
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer p-1 -mr-1 rounded"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Checkboxes */}
+            <div className="px-5 py-4 space-y-3">
+              {EXPORT_SECTION_LABELS.map(({ key, label }) => (
+                <label key={key} className="flex items-center gap-3 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={exportSections[key]}
+                    onChange={(e) =>
+                      setExportSections((prev) => ({ ...prev, [key]: e.target.checked }))
+                    }
+                    className="w-4 h-4 rounded border-border accent-primary cursor-pointer"
+                  />
+                  <span className="text-sm text-foreground group-hover:text-primary transition-colors">{label}</span>
+                </label>
+              ))}
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-border bg-background/40">
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="text-xs px-3 py-1.5 rounded border border-border text-muted-foreground hover:bg-accent/30 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => doExportCSV(exportSections)}
+                disabled={!Object.values(exportSections).some(Boolean)}
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              >
+                <Download className="w-3 h-3" />
+                Download
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }
