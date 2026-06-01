@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { useEpiphan, EVAL_THRESHOLD_META } from "@/lib/epiphan-store";
-import { resolveProbeQuery, ProductContext, DEMO_CTX } from "@/lib/epiphan-data";
+import { resolveProbeQuery, ProductContext } from "@/lib/epiphan-data";
 import { useState } from "react";
 import { Save, Webhook, Slack as SlackIcon, ShoppingBag, Globe, Database, Layers, Zap, ShieldCheck, Radio, Trash2, Plus } from "lucide-react";
 import { IntegrationConfig } from "@/lib/epiphan-export";
@@ -191,19 +191,21 @@ function Settings() {
             </div>
 
             {/* Variable legend */}
-            <div className="flex flex-wrap gap-x-4 gap-y-1 px-3 py-2 rounded border border-border bg-background/60 text-[10px] text-muted-foreground">
-              <span className="font-medium text-foreground/60">Template variables:</span>
-              {(["{{brand}}", "{{category}}", "{{industry}}", "{{productName}}"] as const).map((variable) => (
-                <span key={variable}>
+            <div className="flex flex-col gap-1 px-3 py-2 rounded border border-border bg-background/60 text-[10px] text-muted-foreground">
+              <span className="font-medium text-foreground/60 mb-0.5">Template variables</span>
+              {([
+                ["{{brand}}", "audited brand name", previewCtx?.brand],
+                ["{{productName}}", "inferred product title", previewCtx?.productName],
+                ["{{category}}", "inferred product category", previewCtx?.category],
+                ["{{industry}}", "inferred industry / vertical", previewCtx?.industry],
+              ] as [string, string, string | undefined][]).map(([variable, meaning, value]) => (
+                <div key={variable} className="flex items-baseline gap-2 flex-wrap">
                   <code className="text-primary/80 font-mono">{variable}</code>
-                  {previewCtx && (
-                    <span className="text-muted-foreground/60">
-                      {" → "}{variable === "{{brand}}" ? previewCtx.brand : variable === "{{category}}" ? previewCtx.category : variable === "{{industry}}" ? previewCtx.industry : previewCtx.productName}
-                    </span>
-                  )}
-                </span>
+                  <span className="text-muted-foreground/60">— {meaning}</span>
+                  {value && <span className="text-muted-foreground/50 italic">({value})</span>}
+                </div>
               ))}
-              {!previewCtx && <span className="italic text-muted-foreground/50">— run an audit to see resolved values</span>}
+              {!previewCtx && <span className="italic text-muted-foreground/40 mt-0.5">Run an audit to see the current resolved values.</span>}
             </div>
 
             <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
@@ -238,9 +240,7 @@ function Settings() {
                       </button>
                     </div>
                     <div className="ml-[52px] mt-0.5 text-[10px] text-muted-foreground/60 font-mono truncate">
-                      {previewCtx
-                        ? <span>↳ {resolved}</span>
-                        : <span className="italic">↳ run an audit to preview resolved text</span>}
+                      ↳ {resolved}
                     </div>
                   </div>
                 );
