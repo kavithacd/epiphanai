@@ -261,8 +261,10 @@ function FeedSection({
   isRunning: boolean;
 }) {
   const bulkAutoFix = useEpiphan((s) => s.bulkAutoFix);
+  const regenerateFix = useEpiphan((s) => s.regenerateFix);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
+  const evalFailed = audit.failures.filter((f) => f.status === "eval_failed");
   const selectable = audit.failures.filter((f) => f.fix && (f.status === "eval_passed" || f.status === "detected" || f.status === "review_pending"));
   const toggle = (id: string) => {
     const n = new Set(selected); n.has(id) ? n.delete(id) : n.add(id); setSelected(n);
@@ -308,25 +310,42 @@ function FeedSection({
         </div>
       </div>
 
-      {selectable.length > 0 && (
+      {(selectable.length > 0 || evalFailed.length > 0) && (
         <div className="px-5 py-2 border-b border-border bg-background/40 flex flex-wrap items-center gap-2">
-          <button onClick={selectAll} className="text-[10px] px-2 py-1 rounded border border-border hover:bg-accent/30">
-            All fixable ({selectable.length})
-          </button>
-          <button onClick={selectNonCritical} className="text-[10px] px-2 py-1 rounded border border-border hover:bg-accent/30">
-            Non-critical only
-          </button>
-          {selected.size > 0 && (
-            <button onClick={clear} className="text-[10px] px-2 py-1 rounded border border-border hover:bg-accent/30 text-muted-foreground">
-              Clear
-            </button>
+          {selectable.length > 0 && (
+            <>
+              <button onClick={selectAll} className="text-[10px] px-2 py-1 rounded border border-border hover:bg-accent/30">
+                All fixable ({selectable.length})
+              </button>
+              <button onClick={selectNonCritical} className="text-[10px] px-2 py-1 rounded border border-border hover:bg-accent/30">
+                Non-critical only
+              </button>
+              {selected.size > 0 && (
+                <button onClick={clear} className="text-[10px] px-2 py-1 rounded border border-border hover:bg-accent/30 text-muted-foreground">
+                  Clear
+                </button>
+              )}
+            </>
           )}
-          <div className="ml-auto">
-            <button onClick={() => { bulkAutoFix(Array.from(selected)); clear(); }}
-              disabled={selected.size === 0}
-              className="text-[10px] px-3 py-1.5 rounded bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed font-medium flex items-center gap-1.5">
-              <Check className="w-3 h-3" /> Apply All ({selected.size})
-            </button>
+          <div className="ml-auto flex items-center gap-2">
+            {evalFailed.length > 0 && (
+              <button
+                onClick={() => {
+                  evalFailed.forEach((f) => regenerateFix(f.id));
+                  toast.message("Regenerating failed fixes…", { description: `Re-running AI generation for ${evalFailed.length} eval-failed fix${evalFailed.length === 1 ? "" : "es"}.` });
+                }}
+                disabled={evalFailed.every((f) => f.status === "generating")}
+                className="text-[10px] px-3 py-1.5 rounded border border-sev-medium/40 text-sev-medium hover:bg-sev-medium/10 disabled:opacity-30 disabled:cursor-not-allowed font-medium flex items-center gap-1.5">
+                <RefreshCw className="w-3 h-3" /> Regenerate failed ({evalFailed.length})
+              </button>
+            )}
+            {selectable.length > 0 && (
+              <button onClick={() => { bulkAutoFix(Array.from(selected)); clear(); }}
+                disabled={selected.size === 0}
+                className="text-[10px] px-3 py-1.5 rounded bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed font-medium flex items-center gap-1.5">
+                <Check className="w-3 h-3" /> Apply All ({selected.size})
+              </button>
+            )}
           </div>
         </div>
       )}
