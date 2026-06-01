@@ -134,6 +134,10 @@ function recordDeployment(
 }
 
 
+// Fixed epoch for deterministic seed timestamps (must be declared before
+// `create()` runs the seed* functions during module init, or TDZ throws).
+const SEED_EPOCH = 1748275200000;
+
 export const useEpiphan = create<State>((set, get) => ({
   audits: seedAudits(),
   activeAuditId: null,
