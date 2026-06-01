@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { useEpiphan } from "@/lib/epiphan-store";
 import { useState } from "react";
-import { Save, Lock, Webhook, Slack as SlackIcon, ShoppingBag, Globe, Database, Layers } from "lucide-react";
+import { Save, Webhook, Slack as SlackIcon, ShoppingBag, Globe, Database, Layers, Zap } from "lucide-react";
 import { IntegrationConfig } from "@/lib/epiphan-export";
 
 export const Route = createFileRoute("/settings")({
@@ -13,6 +13,8 @@ export const Route = createFileRoute("/settings")({
 function Settings() {
   const integrations = useEpiphan((s) => s.integrations);
   const setIntegration = useEpiphan((s) => s.setIntegration);
+  const autoDeployEnabled = useEpiphan((s) => s.autoDeployEnabled);
+  const setAutoDeployEnabled = useEpiphan((s) => s.setAutoDeployEnabled);
   const [ollamaUrl, setOllamaUrl] = useState("http://localhost:11434");
   const [n8nUrl, setN8nUrl] = useState("https://n8n.tessera.internal/webhook/audit/start");
   const [saved, setSaved] = useState(false);
@@ -27,6 +29,44 @@ function Settings() {
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Configuration</div>
           <h1 className="text-2xl font-sans font-medium mt-1">Settings</h1>
         </header>
+
+        {/* Audit behaviour */}
+        <section className="border border-border rounded-lg bg-surface p-6 space-y-4">
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Audit behaviour</div>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Control how detected fixes are handled after the eval gate passes.
+            </p>
+          </div>
+
+          <div className="flex items-start justify-between gap-4 py-3 border-t border-border">
+            <div className="flex items-start gap-3">
+              <Zap className={`w-4 h-4 mt-0.5 ${autoDeployEnabled ? "text-sev-low" : "text-muted-foreground"}`} />
+              <div>
+                <div className="text-xs font-medium text-foreground">Auto-deploy safe fixes</div>
+                <div className="text-[11px] text-muted-foreground mt-0.5 max-w-sm">
+                  When <span className="text-foreground">ON</span> — technical fixes (robots.txt, JSON-LD, canonical tags, WebP conversion) are deployed automatically after passing the eval gate. Copy and image fixes always require human review.<br />
+                  When <span className="text-foreground">OFF</span> — every fix lands in the Review Queue for your approval before anything is deployed.
+                </div>
+              </div>
+            </div>
+            <button
+              role="switch"
+              aria-checked={autoDeployEnabled}
+              onClick={() => setAutoDeployEnabled(!autoDeployEnabled)}
+              className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${autoDeployEnabled ? "bg-primary" : "bg-muted"}`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200 ${autoDeployEnabled ? "translate-x-4" : "translate-x-0"}`}
+              />
+            </button>
+          </div>
+          <div className={`text-[10px] px-3 py-2 rounded border ${autoDeployEnabled ? "border-sev-low/30 bg-sev-low/5 text-sev-low" : "border-border text-muted-foreground"}`}>
+            {autoDeployEnabled
+              ? "● Auto-deploy ON — safe fixes will deploy automatically after eval gate."
+              : "● Auto-deploy OFF — all fixes route to the Review Queue for manual approval."}
+          </div>
+        </section>
 
         {/* Core stack */}
         <section className="border border-border rounded-lg bg-surface p-6 space-y-5">

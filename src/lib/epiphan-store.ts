@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import {
   AuditRecord, Failure, Fix, FAILURE_CATALOG, fixTemplateFor, PILLARS,
   PillarId, SEVERITY_WEIGHT, TraceLog, MODEL_MATRIX, describeFix,
-  inferProductContext, DEMO_CTX, ProductContext, mulberry32, seededInt, hashStr,
+  inferProductContext, ProductContext,
 } from "./epiphan-data";
 import {
   IntegrationConfig, EMPTY_INTEGRATIONS, PlatformId, PLATFORM_LABEL,
@@ -11,15 +11,9 @@ import {
 } from "./epiphan-export";
 
 
-// Fixed epoch so Date.now() drift can't cause SSR/client mismatch in seed data.
-const SEED_EPOCH = 1748275200000;
-
 // Runtime IDs only (post-mount) — safe for hydration.
 const uid = () => Math.random().toString(36).slice(2, 11);
 const hash = () => "0x" + Math.random().toString(16).slice(2, 10);
-// Seeded variants used in seed* functions so SSR HTML == first client render.
-const sUid = (rng: () => number) => Math.floor(rng() * 1e11).toString(36).slice(0, 9);
-const sHash = (rng: () => number) => "0x" + Math.floor(rng() * 0xffffffff).toString(16).padStart(8, "0").slice(0, 8);
 
 // Judge-model reasoning snippet — Phoenix/Langfuse-style explanation of why
 // the eval passed. Deterministic per pillar/fix-type so demo traces are coherent.
@@ -85,6 +79,7 @@ interface State {
   fixHistory: FixHistoryEntry[];
   integrations: IntegrationConfig;
   totalCostUsd: number;
+  autoDeployEnabled: boolean;
   startAudit: (url: string) => string;
   approveFix: (failureId: string) => void;
   bulkApprove: (failureIds: string[]) => void;
@@ -96,6 +91,7 @@ interface State {
   clearAll: () => void;
   autoFix: (failureId: string) => void;
   setIntegration: <K extends keyof IntegrationConfig>(key: K, value: IntegrationConfig[K]) => void;
+  setAutoDeployEnabled: (enabled: boolean) => void;
   pushToPlatform: (failureIds: string[], platform: PlatformId) => void;
   notifySlackCritical: (failureRecordId: string) => void;
 }
@@ -138,18 +134,23 @@ function recordDeployment(
 
 
 export const useEpiphan = create<State>((set, get) => ({
-  audits: seedAudits(),
+  audits: [],
   activeAuditId: null,
-  traces: seedTraces(),
-  guardrailEvents: seedGuardrails(),
+  traces: [],
+  guardrailEvents: [],
   fixHistory: [],
   integrations: { ...EMPTY_INTEGRATIONS },
   totalCostUsd: 0,
+  autoDeployEnabled: false,
 
   getAudit: (id) => get().audits.find((a) => a.id === id),
 
   setIntegration: (key, value) => {
     set((s): Partial<State> => ({ integrations: { ...s.integrations, [key]: value } }));
+  },
+
+  setAutoDeployEnabled: (enabled) => {
+    set((): Partial<State> => ({ autoDeployEnabled: enabled }));
   },
 
   notifySlackCritical: (failureRecordId) => {
@@ -249,7 +250,7 @@ export const useEpiphan = create<State>((set, get) => ({
                 durationMs: 400 + Math.floor(Math.random() * 600),
                 tokensIn: 320, tokensOut: 64, costUsd: 0, status: "success",
               });
-              if (!c.requiresHuman) {
+              if (!c.requiresHuman && get().autoDeployEnabled) {
                 const deployId = failure.id;
                 setTimeout(() => {
                   recordDeployment(set, get, deployId);
@@ -408,82 +409,3 @@ export const useEpiphan = create<State>((set, get) => ({
 
 }));
 
-// ──────────────────────────────── seed data ────────────────────────────────
-// All seed values must be deterministic — SSR HTML must byte-match the first
-// client render or React throws hydration errors. We use mulberry32 with a
-// fixed seed and a fixed epoch (no Date.now()) so values are stable.
-function seedAudits(): AuditRecord[] {
-  const rng = mulberry32(hashStr("epiphan-seed-audits-v1"));
-  const a1: AuditRecord = {
-    id: "demo-acme",
-    url: "https://acme-apparel.myshopify.com",
-    storeName: "acme-apparel",
-    status: "complete", currentPillar: null,
-    scores: { P1: 70, P2: 40, P3: 30, P4: 65, P5: 50 },
-    failures: [],
-    createdAt: SEED_EPOCH - 1000 * 60 * 60 * 24 * 2,
-    completedAt: SEED_EPOCH - 1000 * 60 * 60 * 24 * 2 + 1000 * 60 * 47,
-    ctx: DEMO_CTX,
-  };
-  a1.failures = FAILURE_CATALOG.slice(0, 12).map((c) => {
-    const f: Failure = {
-      ...c, id: sUid(rng), auditId: a1.id,
-      status: c.isAutofixable && !c.requiresHuman ? "deployed" : "review_pending",
-      detectedAt: a1.createdAt,
-    };
-    if (c.isAutofixable) {
-      const tpl = fixTemplateFor(f, DEMO_CTX);
-      const fp = 97 + seededInt(rng, 0, 3);
-      const grounding = 93 + seededInt(rng, 0, 6);
-      const userFeedback: "pass" | "fail" | undefined =
-        f.status === "deployed" ? (rng() > 0.18 ? "pass" : "fail") : undefined;
-      f.fix = {
-        id: sUid(rng), fixType: tpl.type, generatedBy: tpl.model,
-        before: tpl.before, after: tpl.after,
-        evalScores: { factPreservation: fp, semanticDensity: 97, structuralSyntax: 100, objectAccuracy: 99, overall: "PASS" },
-        hallucinationScore: 100 - fp,
-        groundingScore: grounding,
-        reasoning: judgeReasoning(f.pillar, tpl.type, fp, grounding),
-        userFeedback,
-        rollbackSnapshot: tpl.before,
-      };
-    }
-    return f;
-  });
-  return [a1];
-}
-
-function seedTraces(): TraceLog[] {
-  const rng = mulberry32(hashStr("epiphan-seed-traces-v1"));
-  const t: TraceLog[] = [];
-  const wfs = [
-    { wf: "WF-02 P1 Audit", model: "Phi-4" },
-    { wf: "WF-09 P2 Schema injection", model: "Llama 3.3 70B" },
-    { wf: "WF-12 Eval Gate", model: "Llama 3.3 (Judge)" },
-    { wf: "WF-11 P4 Alt-text", model: "Llama 3.2-Vision" },
-    { wf: "WF-06 P5 Probes", model: "Llama 3.1 8B (probes)" },
-  ];
-  for (let i = 0; i < 14; i++) {
-    const w = wfs[i % wfs.length];
-    t.push({
-      id: sUid(rng), timestamp: SEED_EPOCH - i * 1000 * 60 * 7,
-      model: w.model, workflow: w.wf, promptHash: sHash(rng),
-      operator: "consultant@tessera.eu",
-      durationMs: 320 + seededInt(rng, 0, 2199),
-      tokensIn: 200 + seededInt(rng, 0, 1199),
-      tokensOut: 60 + seededInt(rng, 0, 799),
-      costUsd: 0, status: i === 11 ? "failure" : "success",
-    });
-  }
-  return t;
-}
-
-function seedGuardrails() {
-  return [
-    { id: "g-1", ts: SEED_EPOCH - 1000 * 60 * 4, rule: "Sovereign Mode", outcome: "allowed" as const, detail: "Routed product copy to local inference — no cloud API touched." },
-    { id: "g-2", ts: SEED_EPOCH - 1000 * 60 * 11, rule: "Destructive Op Lock", outcome: "blocked" as const, detail: "DELETE on /products/784 refused. Used additive Metafield update instead." },
-    { id: "g-3", ts: SEED_EPOCH - 1000 * 60 * 22, rule: "Eval Gate (Hallucination)", outcome: "blocked" as const, detail: "P3 copy claimed '24h delivery' not in source data. Regenerated automatically." },
-    { id: "g-4", ts: SEED_EPOCH - 1000 * 60 * 38, rule: "High-Risk Filter", outcome: "blocked" as const, detail: "Medical claim 'reduces back pain' stripped from supplement copy." },
-    { id: "g-5", ts: SEED_EPOCH - 1000 * 60 * 55, rule: "Rollback Snapshot", outcome: "allowed" as const, detail: "Pre-write snapshot stored for fix #4f2a (robots.txt)." },
-  ];
-}
