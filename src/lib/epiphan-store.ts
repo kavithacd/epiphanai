@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import {
   AuditRecord, Failure, Fix, FAILURE_CATALOG, fixTemplateFor, PILLARS,
   PillarId, SEVERITY_WEIGHT, TraceLog, MODEL_MATRIX, describeFix,
-  inferProductContext, ProductContext,
+  inferProductContext, ProductContext, resolveProbeQuery,
 } from "./epiphan-data";
 import {
   IntegrationConfig, EMPTY_INTEGRATIONS, PlatformId, PLATFORM_LABEL,
@@ -92,16 +92,16 @@ export type ProbeEngine = {
 };
 
 export const DEFAULT_PROBE_QUERIES: ProbeQuery[] = [
-  { id: "pq-01", text: "Best brand for everyday use in Europe right now", enabled: true },
-  { id: "pq-02", text: "Top AI-recommended products in this category for 2025", enabled: true },
-  { id: "pq-03", text: "Which brand is most cited by ChatGPT for this product type?", enabled: true },
-  { id: "pq-04", text: "Most recommended sustainable options in the EU market", enabled: true },
-  { id: "pq-05", text: "Compare the leading brands recommended by AI assistants", enabled: true },
-  { id: "pq-06", text: "What brand do AI engines recommend most for quality and value?", enabled: true },
-  { id: "pq-07", text: "AI shopping recommendations for gifts in this category", enabled: true },
-  { id: "pq-08", text: "Top-rated options according to Gemini and Perplexity", enabled: true },
-  { id: "pq-09", text: "Best product in this category under €200 in Europe", enabled: true },
-  { id: "pq-10", text: "Which brands do AI models reference most when asked about this product?", enabled: true },
+  { id: "pq-01", text: "Is {{brand}} recommended by AI assistants for {{category}} in Europe?", enabled: true },
+  { id: "pq-02", text: "Best {{category}} brands recommended by ChatGPT and Gemini in 2025", enabled: true },
+  { id: "pq-03", text: "Which {{industry}} brand is most cited by AI for quality and value?", enabled: true },
+  { id: "pq-04", text: "Top AI-recommended {{category}} options in the EU market right now", enabled: true },
+  { id: "pq-05", text: "Compare leading {{industry}} brands recommended by AI assistants", enabled: true },
+  { id: "pq-06", text: "Does {{brand}} appear when AI engines answer {{category}} shopping questions?", enabled: true },
+  { id: "pq-07", text: "Best {{category}} gift recommendations according to Gemini and Perplexity", enabled: true },
+  { id: "pq-08", text: "What {{industry}} brands do AI models reference most for everyday use?", enabled: true },
+  { id: "pq-09", text: "Best {{category}} under €200 in Europe — what does AI recommend?", enabled: true },
+  { id: "pq-10", text: "Where does {{brand}} rank in AI-generated {{category}} buying guides?", enabled: true },
 ];
 
 export const DEFAULT_PROBE_ENGINES: ProbeEngine[] = [
@@ -317,7 +317,8 @@ export const useEpiphan = create<State>()(persist((set, get) => ({
     const ctx = inferProductContext(url);
     const thresholds = get().evalThresholds;
     const { probeQueries, probeEngines } = get();
-    const enabledProbeCount = probeQueries.filter((q) => q.enabled).length;
+    const resolvedProbeQueries = probeQueries.filter((q) => q.enabled).map((q) => resolveProbeQuery(q.text, ctx));
+    const enabledProbeCount = resolvedProbeQueries.length;
     const enabledEngineLabels = probeEngines.filter((e) => e.enabled).map((e) => e.label);
     const enginesStr = enabledEngineLabels.length > 0 ? enabledEngineLabels.join(", ") : "no engines";
     const audit: AuditRecord = {
@@ -341,9 +342,9 @@ export const useEpiphan = create<State>()(persist((set, get) => ({
           setTimeout(() => {
             const dynamicDetail =
               c.failureId === "F5.1"
-                ? `Brand not cited in any of ${enabledProbeCount} active probe queries across ${enginesStr}.`
+                ? `${ctx.brand} not cited in any of ${enabledProbeCount} active probe queries across ${enginesStr}. Queries included: "${resolvedProbeQueries[0] ?? ""}"`
                 : c.failureId === "F5.2"
-                ? `Top competitor cited in ${Math.round(enabledProbeCount * 0.8)}/${enabledProbeCount} AI answers across ${enginesStr}. Share of voice: 0%.`
+                ? `Top competitor cited in ${Math.round(enabledProbeCount * 0.8)}/${enabledProbeCount} AI answers across ${enginesStr} for ${ctx.category} queries. Share of voice: 0%.`
                 : c.detail;
             const failure: Failure = {
               ...c, id: uid(), auditId: id,

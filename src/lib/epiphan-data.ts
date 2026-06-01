@@ -238,6 +238,17 @@ export function inferProductContext(rawUrl: string): ProductContext {
 
 export const DEMO_CTX: ProductContext = inferProductContext("https://acme-apparel.myshopify.com/products/merino-crew-charcoal");
 
+// ─── Probe query template resolution ────────────────────────────────────
+// Supported variables: {{brand}}, {{productName}}, {{category}}, {{industry}}
+// Unrecognised {{tokens}} are left intact so future variables don't break.
+export function resolveProbeQuery(text: string, ctx: ProductContext): string {
+  return text
+    .replace(/\{\{brand\}\}/g, ctx.brand)
+    .replace(/\{\{productName\}\}/g, ctx.productName)
+    .replace(/\{\{category\}\}/g, ctx.category)
+    .replace(/\{\{industry\}\}/g, ctx.industry);
+}
+
 // ─── Fix templates (context-aware) ──────────────────────────────────────
 export function fixTemplateFor(f: Failure, ctx: ProductContext = DEMO_CTX): { type: string; model: string; before: string; after: string } {
   const baseUrl = `https://${ctx.domain}`;
