@@ -391,19 +391,20 @@ export function FixStatusPill({ status }: { status: string }) {
 function StorePreview({ audit }: { audit: ReturnType<typeof useEpiphan.getState>["audits"][0] }) {
   const healed = (id: string) => audit.failures.some((f) => f.failureId === id && f.status === "deployed");
   const detected = (id: string) => audit.failures.some((f) => f.failureId === id);
+  const ctx = audit.ctx;
 
+  const currencySymbol = ctx.currency === "EUR" ? "€" : ctx.currency === "GBP" ? "£" : ctx.currency === "USD" ? "$" : `${ctx.currency} `;
   const wordCount = healed("F3.1") ? 412 : 32;
-  const altText = healed("F4.1") ? "Charcoal merino wool crew-neck sweater, ribbed collar"
-    : healed("F4.2") ? "Stone cashmere scarf on wooden chair" : "IMG_4521.jpg";
+  const altText = healed("F4.1") || healed("F4.2") ? ctx.imageDesc : "IMG_4521.jpg";
   const robotsLine = healed("F1.2") ? "User-agent: GPTBot — Allow: /" : "User-agent: GPTBot — Disallow: /";
   const llmsTxt = healed("F1.1") ? "/llms.txt · deployed" : "/llms.txt · 404 Not Found";
   const jsonLd = healed("F2.1") ? "Product JSON-LD · valid" : "No Product JSON-LD";
   const breadcrumb = healed("F2.2") ? "BreadcrumbList · valid positions" : "BreadcrumbList · missing positions";
   const sov = healed("F5.1") ? "Cited in 6/10 probes" : "Cited in 0/10 probes";
-  const imageFmt = healed("F4.4") ? "merino.webp · 118 KB" : "merino.jpg · 412 KB";
-  const desc = healed("F3.1")
-    ? "100% Italian merino wool sourced in Biella. Best for office layering, smart-casual dinners, and weekend coats. 19.5-micron yarn, breathable, pill-resistant. Pairs with denim, wool trousers, selvedge chinos…"
-    : "Soft merino crew. Made in Italy.";
+  const imageFmt = healed("F4.4") ? `${ctx.handle}.webp · 118 KB` : `${ctx.handle}.jpg · 412 KB`;
+  const descBefore = `${ctx.productName}. ${ctx.material === "—" ? "Available now." : ctx.material + "."}`;
+  const descAfter = `${ctx.material === "—" ? ctx.productName : ctx.material} — ${ctx.productName} is engineered for the way ${ctx.industry.toLowerCase()} customers actually use it: built to last, easy to care for, and grounded in real provenance. Best for everyday use and as a long-term staple in the ${ctx.category.toLowerCase()} category. Available in ${ctx.primaryColor === "—" ? "multiple finishes" : ctx.primaryColor + " and complementary tones"}. Designed and quality-controlled by ${ctx.brand}.`;
+  const desc = healed("F3.1") ? descAfter : descBefore;
 
   const Row = ({ label, value, fixed, present }: { label: string; value: string; fixed: boolean; present: boolean }) => (
     <div className="grid grid-cols-[120px_1fr_70px] gap-3 items-center px-3 py-2 border-t border-border text-[11px]">
@@ -446,8 +447,8 @@ function StorePreview({ audit }: { audit: ReturnType<typeof useEpiphan.getState>
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Product detail page</div>
           <div className="border border-border rounded p-4 bg-surface/50">
             <div className="flex items-center justify-between mb-2">
-              <div className="text-sm font-medium text-foreground">Merino Crew Sweater</div>
-              <div className="text-sm tabular-nums text-foreground">€189</div>
+              <div className="text-sm font-medium text-foreground">{ctx.productName}</div>
+              <div className="text-sm tabular-nums text-foreground">{currencySymbol}{ctx.price}</div>
             </div>
             <div className={`text-[11px] leading-relaxed transition-colors duration-500 ${healed("F3.1") ? "text-foreground" : "text-muted-foreground"}`}>
               {desc}
