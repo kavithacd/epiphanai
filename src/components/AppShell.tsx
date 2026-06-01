@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { Activity, Inbox, History, Shield, Settings as Cog, Sparkles, Plus, TrendingUp, Radio } from "lucide-react";
+import { Activity, Inbox, History, Shield, Settings as Cog, Sparkles, Plus, TrendingUp, Radio, Settings2 } from "lucide-react";
 import { useEpiphan } from "@/lib/epiphan-store";
 
 const NAV = [
@@ -63,7 +63,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
             {NAV.find((n) => loc.pathname.startsWith(n.to))?.label ?? "epiphanAI"}
           </div>
-          {!loc.pathname.startsWith("/monitoring") && (
+          {loc.pathname.startsWith("/monitoring") ? (
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent("monitoring:open-setup"));
+              }}
+              className="px-3 py-1.5 rounded border border-border bg-surface hover:bg-accent/40 text-foreground text-[11px] flex items-center gap-1.5 font-medium transition-colors"
+            >
+              <Settings2 className="w-3 h-3" /> Edit setup
+            </button>
+          ) : (
             <button
               onClick={() => {
                 navigate({ to: "/dashboard" });

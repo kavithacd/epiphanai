@@ -261,6 +261,18 @@ function BrandMonitoring() {
     setLocalCompetitors(brandMonitorConfig.competitors);
   }, [brandMonitorConfig]);
 
+  // Listen for "Edit setup" button click from the AppShell header
+  useEffect(() => {
+    const handler = () => {
+      setSetupOpen(true);
+      setTimeout(() => {
+        document.getElementById("monitoring-setup")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 50);
+    };
+    window.addEventListener("monitoring:open-setup", handler);
+    return () => window.removeEventListener("monitoring:open-setup", handler);
+  }, []);
+
   const savedBrandInput = brandMonitorConfig.brandName || brandMonitorConfig.productUrl;
   const isBrandDirty =
     brandInput !== savedBrandInput ||
@@ -464,7 +476,7 @@ function BrandMonitoring() {
         </header>
 
         {/* ── Brand Setup Panel ─────────────────────────────────────────── */}
-        <section className="border border-border rounded-lg bg-surface overflow-hidden">
+        <section id="monitoring-setup" className="border border-border rounded-lg bg-surface overflow-hidden">
           {/* Panel header — always visible */}
           <button
             type="button"
