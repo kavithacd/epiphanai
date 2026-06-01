@@ -78,6 +78,37 @@ export type EvalThresholds = {
   objectAccuracy: number;
 };
 
+export type ProbeQuery = {
+  id: string;
+  text: string;
+  enabled: boolean;
+};
+
+export type ProbeEngine = {
+  id: string;
+  label: string;
+  enabled: boolean;
+};
+
+export const DEFAULT_PROBE_QUERIES: ProbeQuery[] = [
+  { id: "pq-01", text: "Best brand for everyday use in Europe right now", enabled: true },
+  { id: "pq-02", text: "Top AI-recommended products in this category for 2025", enabled: true },
+  { id: "pq-03", text: "Which brand is most cited by ChatGPT for this product type?", enabled: true },
+  { id: "pq-04", text: "Most recommended sustainable options in the EU market", enabled: true },
+  { id: "pq-05", text: "Compare the leading brands recommended by AI assistants", enabled: true },
+  { id: "pq-06", text: "What brand do AI engines recommend most for quality and value?", enabled: true },
+  { id: "pq-07", text: "AI shopping recommendations for gifts in this category", enabled: true },
+  { id: "pq-08", text: "Top-rated options according to Gemini and Perplexity", enabled: true },
+  { id: "pq-09", text: "Best product in this category under €200 in Europe", enabled: true },
+  { id: "pq-10", text: "Which brands do AI models reference most when asked about this product?", enabled: true },
+];
+
+export const DEFAULT_PROBE_ENGINES: ProbeEngine[] = [
+  { id: "chatgpt", label: "ChatGPT", enabled: true },
+  { id: "gemini", label: "Gemini", enabled: true },
+  { id: "perplexity", label: "Perplexity", enabled: true },
+];
+
 export const EVAL_THRESHOLD_META: {
   key: keyof EvalThresholds;
   label: string;
@@ -100,6 +131,8 @@ interface State {
   totalCostUsd: number;
   autoDeployEnabled: boolean;
   evalThresholds: EvalThresholds;
+  probeQueries: ProbeQuery[];
+  probeEngines: ProbeEngine[];
   startAudit: (url: string) => string;
   approveFix: (failureId: string) => void;
   bulkApprove: (failureIds: string[]) => void;
@@ -114,6 +147,11 @@ interface State {
   setIntegration: <K extends keyof IntegrationConfig>(key: K, value: IntegrationConfig[K]) => void;
   setAutoDeployEnabled: (enabled: boolean) => void;
   setEvalThreshold: (key: keyof EvalThresholds, value: number) => void;
+  addProbeQuery: (text: string) => void;
+  deleteProbeQuery: (id: string) => void;
+  updateProbeQuery: (id: string, text: string) => void;
+  toggleProbeQuery: (id: string) => void;
+  toggleProbeEngine: (id: string) => void;
   pushToPlatform: (failureIds: string[], platform: PlatformId) => void;
   notifySlackCritical: (failureRecordId: string) => void;
 }
@@ -170,6 +208,8 @@ export const useEpiphan = create<State>((set, get) => ({
     structuralSyntax: 100,
     objectAccuracy: 95,
   },
+  probeQueries: DEFAULT_PROBE_QUERIES,
+  probeEngines: DEFAULT_PROBE_ENGINES,
 
   getAudit: (id) => get().audits.find((a) => a.id === id),
 
@@ -184,6 +224,37 @@ export const useEpiphan = create<State>((set, get) => ({
   setEvalThreshold: (key, value) => {
     set((s): Partial<State> => ({
       evalThresholds: { ...s.evalThresholds, [key]: value },
+    }));
+  },
+
+  addProbeQuery: (text) => {
+    set((s): Partial<State> => ({
+      probeQueries: [...s.probeQueries, { id: uid(), text, enabled: true }],
+    }));
+  },
+
+  deleteProbeQuery: (id) => {
+    set((s): Partial<State> => {
+      if (s.probeQueries.length <= 1) return {};
+      return { probeQueries: s.probeQueries.filter((q) => q.id !== id) };
+    });
+  },
+
+  updateProbeQuery: (id, text) => {
+    set((s): Partial<State> => ({
+      probeQueries: s.probeQueries.map((q) => q.id === id ? { ...q, text } : q),
+    }));
+  },
+
+  toggleProbeQuery: (id) => {
+    set((s): Partial<State> => ({
+      probeQueries: s.probeQueries.map((q) => q.id === id ? { ...q, enabled: !q.enabled } : q),
+    }));
+  },
+
+  toggleProbeEngine: (id) => {
+    set((s): Partial<State> => ({
+      probeEngines: s.probeEngines.map((e) => e.id === id ? { ...e, enabled: !e.enabled } : e),
     }));
   },
 
@@ -233,6 +304,10 @@ export const useEpiphan = create<State>((set, get) => ({
     const id = uid();
     const ctx = inferProductContext(url);
     const thresholds = get().evalThresholds;
+    const { probeQueries, probeEngines } = get();
+    const enabledProbeCount = probeQueries.filter((q) => q.enabled).length;
+    const enabledEngineLabels = probeEngines.filter((e) => e.enabled).map((e) => e.label);
+    const enginesStr = enabledEngineLabels.length > 0 ? enabledEngineLabels.join(", ") : "no engines";
     const audit: AuditRecord = {
       id, url, storeName: ctx.brand || deriveStoreName(url),
       status: "running", currentPillar: "P1",
@@ -252,9 +327,16 @@ export const useEpiphan = create<State>((set, get) => ({
         const picks = candidates.slice(0, Math.min(candidates.length, 3 + (p === "P2" || p === "P4" ? 1 : 0)));
         picks.forEach((c, ci) => {
           setTimeout(() => {
+            const dynamicDetail =
+              c.failureId === "F5.1"
+                ? `Brand not cited in any of ${enabledProbeCount} active probe queries across ${enginesStr}.`
+                : c.failureId === "F5.2"
+                ? `Top competitor cited in ${Math.round(enabledProbeCount * 0.8)}/${enabledProbeCount} AI answers across ${enginesStr}. Share of voice: 0%.`
+                : c.detail;
             const failure: Failure = {
               ...c, id: uid(), auditId: id,
               status: "detected", detectedAt: Date.now(),
+              detail: dynamicDetail,
             };
             if (c.isAutofixable) {
               const tpl = fixTemplateFor(failure, ctx);

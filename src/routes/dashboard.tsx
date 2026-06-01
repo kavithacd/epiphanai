@@ -389,6 +389,11 @@ export function FixStatusPill({ status }: { status: string }) {
 
 // ─── Live Store Preview ──────────────────────────────────────────────────
 function StorePreview({ audit }: { audit: ReturnType<typeof useEpiphan.getState>["audits"][0] }) {
+  const probeQueries = useEpiphan((s) => s.probeQueries);
+  const probeEngines = useEpiphan((s) => s.probeEngines);
+  const enabledProbeCount = probeQueries.filter((q) => q.enabled).length;
+  const enabledEngineLabels = probeEngines.filter((e) => e.enabled).map((e) => e.label);
+
   const healed = (id: string) => audit.failures.some((f) => f.failureId === id && f.status === "deployed");
   const detected = (id: string) => audit.failures.some((f) => f.failureId === id);
   const ctx = audit.ctx;
@@ -400,7 +405,11 @@ function StorePreview({ audit }: { audit: ReturnType<typeof useEpiphan.getState>
   const llmsTxt = healed("F1.1") ? "/llms.txt · deployed" : "/llms.txt · 404 Not Found";
   const jsonLd = healed("F2.1") ? "Product JSON-LD · valid" : "No Product JSON-LD";
   const breadcrumb = healed("F2.2") ? "BreadcrumbList · valid positions" : "BreadcrumbList · missing positions";
-  const sov = healed("F5.1") ? "Cited in 6/10 probes" : "Cited in 0/10 probes";
+  const sovHealedCount = enabledProbeCount > 0 ? Math.round(enabledProbeCount * 0.6) : 0;
+  const enginesLabel = enabledEngineLabels.length > 0 ? ` via ${enabledEngineLabels.join(", ")}` : "";
+  const sov = healed("F5.1")
+    ? `Cited in ${sovHealedCount}/${enabledProbeCount} probes${enginesLabel}`
+    : `Cited in 0/${enabledProbeCount} probes${enginesLabel}`;
   const imageFmt = healed("F4.4") ? `${ctx.handle}.webp · 118 KB` : `${ctx.handle}.jpg · 412 KB`;
   const descBefore = `${ctx.productName}. ${ctx.material === "—" ? "Available now." : ctx.material + "."}`;
   const descAfter = `${ctx.material === "—" ? ctx.productName : ctx.material} — ${ctx.productName} is engineered for the way ${ctx.industry.toLowerCase()} customers actually use it: built to last, easy to care for, and grounded in real provenance. Best for everyday use and as a long-term staple in the ${ctx.category.toLowerCase()} category. Available in ${ctx.primaryColor === "—" ? "multiple finishes" : ctx.primaryColor + " and complementary tones"}. Designed and quality-controlled by ${ctx.brand}.`;
