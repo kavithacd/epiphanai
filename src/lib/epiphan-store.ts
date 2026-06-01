@@ -11,6 +11,9 @@ import {
 } from "./epiphan-export";
 
 
+// Fixed epoch so Date.now() drift can't cause SSR/client mismatch in seed data.
+const SEED_EPOCH = 1748275200000;
+
 // Runtime IDs only (post-mount) — safe for hydration.
 const uid = () => Math.random().toString(36).slice(2, 11);
 const hash = () => "0x" + Math.random().toString(16).slice(2, 10);
@@ -409,7 +412,6 @@ export const useEpiphan = create<State>((set, get) => ({
 // All seed values must be deterministic — SSR HTML must byte-match the first
 // client render or React throws hydration errors. We use mulberry32 with a
 // fixed seed and a fixed epoch (no Date.now()) so values are stable.
-const SEED_EPOCH = 1748275200000; // fixed point so Date.now() drift can't cause SSR/client mismatch
 function seedAudits(): AuditRecord[] {
   const rng = mulberry32(hashStr("epiphan-seed-audits-v1"));
   const a1: AuditRecord = {
