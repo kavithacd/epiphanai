@@ -1,9 +1,11 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import { toast } from "sonner";
 import {
   AuditRecord, Failure, Fix, FAILURE_CATALOG, fixTemplateFor, PILLARS,
   PillarId, SEVERITY_WEIGHT, TraceLog, MODEL_MATRIX, describeFix,
-  inferProductContext, DEMO_CTX, ProductContext, mulberry32, seededInt, hashStr,
+  inferProductContext, ProductContext, resolveProbeQuery, SCHEMA_FIELD_REGISTRY, MissingField,
+  SchemaType, SovEngineBreakdown,
 } from "./epiphan-data";
 import {
   IntegrationConfig, EMPTY_INTEGRATIONS, PlatformId, PLATFORM_LABEL,
@@ -14,9 +16,6 @@ import {
 // Runtime IDs only (post-mount) — safe for hydration.
 const uid = () => Math.random().toString(36).slice(2, 11);
 const hash = () => "0x" + Math.random().toString(16).slice(2, 10);
-// Seeded variants used in seed* functions so SSR HTML == first client render.
-const sUid = (rng: () => number) => Math.floor(rng() * 1e11).toString(36).slice(0, 9);
-const sHash = (rng: () => number) => "0x" + Math.floor(rng() * 0xffffffff).toString(16).padStart(8, "0").slice(0, 8);
 
 // Judge-model reasoning snippet — Phoenix/Langfuse-style explanation of why
 // the eval passed. Deterministic per pillar/fix-type so demo traces are coherent.
@@ -34,6 +33,62 @@ function judgeReasoning(pillar: PillarId, fixType: string, fp: number, grounding
     case "P5":
       return base + `Probe results cited directly; no synthesised citations. Outreach plan flagged for human approval before any external action.`;
   }
+}
+
+// ─── P2 missing field gap detection ──────────────────────────────────────
+// Extracts field keys from a JSON-LD "before" string (the existing page markup).
+// Returns an empty set if the string is a comment/placeholder (schema absent).
+function extractJsonLdFields(beforeText: string): Set<string> {
+  const trimmed = beforeText.trim();
+  if (trimmed.startsWith("//") || trimmed.startsWith("#") || !trimmed.startsWith("{")) {
+    return new Set();
+  }
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (parsed && typeof parsed === "object") return new Set(Object.keys(parsed));
+  } catch {
+    // Malformed JSON (e.g. F2.4 double comma) — extract keys via regex
+    const keys = new Set<string>();
+    for (const m of trimmed.matchAll(/"([^"@][^"]*?)"\s*:/g)) keys.add(m[1]);
+    return keys;
+  }
+  return new Set();
+}
+
+// Build a MissingField list for the given schema types, given fields already
+// present in the page's JSON-LD markup (derived from extractJsonLdFields).
+function computeMissingFields(schemaTypes: SchemaType[], presentFields: Set<string>): MissingField[] {
+  const result: MissingField[] = [];
+  for (const type of schemaTypes) {
+    for (const entry of (SCHEMA_FIELD_REGISTRY[type] ?? [])) {
+      result.push({
+        schemaType: type, field: entry.field, label: entry.label,
+        engines: entry.engines, present: presentFields.has(entry.field),
+      });
+    }
+  }
+  return result;
+}
+
+// ─── P5 SoV per-engine simulation ────────────────────────────────────────
+// Computed once per audit when the P5 pillar starts — not per individual failure.
+// Both F5.1 ("zero brand citations") and F5.2 ("competitor dominance") can fire
+// for the same audit; they describe complementary aspects of the same zero-SoV
+// probe result: brand=0, competitor=dominant. Keeping a single stable breakdown
+// avoids contradictions between failure messages and the panel values.
+function computeSovBreakdown(
+  probeEngines: { id: string; label: string; enabled: boolean }[],
+  totalProbes: number,
+): SovEngineBreakdown {
+  const breakdown: SovEngineBreakdown = {};
+  for (const engine of probeEngines) {
+    if (!engine.enabled) continue;
+    // Brand not cited in any probe (consistent with F5.1: "zero brand citations").
+    // Competitor cited in ~80% of probes (consistent with F5.2: "competitor dominance").
+    const competitorCited = Math.ceil(totalProbes * 0.8);
+    breakdown[engine.id] = { brandCited: 0, competitorCited, total: totalProbes };
+  }
+  return breakdown;
 }
 
 function deriveStoreName(url: string) {
@@ -74,6 +129,63 @@ export type FixHistoryEntry = {
   pillarDelta: number;    // delta on the pillar that was healed
 };
 
+export type EvalThresholds = {
+  factPreservation: number;
+  semanticDensity: number;
+  structuralSyntax: number;
+  objectAccuracy: number;
+};
+
+export type ProbeQuery = {
+  id: string;
+  text: string;
+  enabled: boolean;
+};
+
+export type ProbeEngine = {
+  id: string;
+  label: string;
+  enabled: boolean;
+};
+
+export type BrandMonitorConfig = {
+  configured: boolean;
+  brandName: string;
+  productUrl: string;
+  competitors: string[];
+};
+
+export const DEFAULT_PROBE_QUERIES: ProbeQuery[] = [
+  { id: "pq-01", text: "Is {{brand}} recommended by AI assistants for {{category}} in Europe?", enabled: true },
+  { id: "pq-02", text: "Best {{category}} brands recommended by ChatGPT and Gemini in 2025", enabled: true },
+  { id: "pq-03", text: "Which {{industry}} brand is most cited by AI for quality and value?", enabled: true },
+  { id: "pq-04", text: "Top AI-recommended {{category}} options in the EU market right now", enabled: true },
+  { id: "pq-05", text: "Compare leading {{industry}} brands recommended by AI assistants", enabled: true },
+  { id: "pq-06", text: "Does {{brand}} appear when AI engines answer {{category}} shopping questions?", enabled: true },
+  { id: "pq-07", text: "Best {{category}} gift recommendations for {{productName}} fans according to AI", enabled: true },
+  { id: "pq-08", text: "What {{industry}} brands do AI models reference most for everyday use?", enabled: true },
+  { id: "pq-09", text: "Best {{category}} under €200 in Europe — what does AI recommend?", enabled: true },
+  { id: "pq-10", text: "Where does {{brand}} rank in AI-generated {{category}} buying guides?", enabled: true },
+];
+
+export const DEFAULT_PROBE_ENGINES: ProbeEngine[] = [
+  { id: "chatgpt", label: "ChatGPT", enabled: true },
+  { id: "gemini", label: "Gemini", enabled: true },
+  { id: "perplexity", label: "Perplexity", enabled: true },
+];
+
+export const EVAL_THRESHOLD_META: {
+  key: keyof EvalThresholds;
+  label: string;
+  description: string;
+  default: number;
+}[] = [
+  { key: "factPreservation", label: "Fact Preservation", description: "All claims in the generated fix must trace back to extracted product data. Guards against hallucinated specs, invented certifications, and made-up delivery promises.", default: 100 },
+  { key: "semanticDensity", label: "Semantic Density", description: "Output must contain sufficient context-rich language for AI engines to parse intent. Low scores indicate thin, vague copy that won't improve GEO visibility.", default: 90 },
+  { key: "structuralSyntax", label: "Structural Syntax", description: "Generated JSON-LD, HTML, and robots.txt must be syntactically valid and parse without errors. A score below 100 means the output cannot be safely deployed.", default: 100 },
+  { key: "objectAccuracy", label: "Object Accuracy", description: "Product objects referenced in the fix (SKU, brand, price, currency) must match the source data. Mismatches cause incorrect structured data in search engines.", default: 95 },
+];
+
 interface State {
   audits: AuditRecord[];
   activeAuditId: string | null;
@@ -82,6 +194,11 @@ interface State {
   fixHistory: FixHistoryEntry[];
   integrations: IntegrationConfig;
   totalCostUsd: number;
+  autoDeployEnabled: boolean;
+  evalThresholds: EvalThresholds;
+  probeQueries: ProbeQuery[];
+  probeEngines: ProbeEngine[];
+  brandMonitorConfig: BrandMonitorConfig;
   startAudit: (url: string) => string;
   approveFix: (failureId: string) => void;
   bulkApprove: (failureIds: string[]) => void;
@@ -92,7 +209,16 @@ interface State {
   getAudit: (id: string) => AuditRecord | undefined;
   clearAll: () => void;
   autoFix: (failureId: string) => void;
+  regenerateFix: (failureId: string) => void;
   setIntegration: <K extends keyof IntegrationConfig>(key: K, value: IntegrationConfig[K]) => void;
+  setAutoDeployEnabled: (enabled: boolean) => void;
+  setEvalThreshold: (key: keyof EvalThresholds, value: number) => void;
+  addProbeQuery: (text: string) => void;
+  deleteProbeQuery: (id: string) => void;
+  updateProbeQuery: (id: string, text: string) => void;
+  toggleProbeQuery: (id: string) => void;
+  toggleProbeEngine: (id: string) => void;
+  setBrandMonitorConfig: (config: Partial<BrandMonitorConfig>) => void;
   pushToPlatform: (failureIds: string[], platform: PlatformId) => void;
   notifySlackCritical: (failureRecordId: string) => void;
 }
@@ -134,19 +260,92 @@ function recordDeployment(
 }
 
 
-export const useEpiphan = create<State>((set, get) => ({
-  audits: seedAudits(),
+const MAX_STR = 3000;
+function truncateFix(fix: Fix | undefined): Fix | undefined {
+  if (!fix) return fix;
+  return {
+    ...fix,
+    before: fix.before?.slice(0, MAX_STR),
+    after: fix.after?.slice(0, MAX_STR),
+    rollbackSnapshot: fix.rollbackSnapshot?.slice(0, MAX_STR),
+  };
+}
+
+export const useEpiphan = create<State>()(persist((set, get) => ({
+  audits: [],
   activeAuditId: null,
-  traces: seedTraces(),
-  guardrailEvents: seedGuardrails(),
+  traces: [],
+  guardrailEvents: [],
   fixHistory: [],
   integrations: { ...EMPTY_INTEGRATIONS },
   totalCostUsd: 0,
+  autoDeployEnabled: false,
+  evalThresholds: {
+    factPreservation: 100,
+    semanticDensity: 90,
+    structuralSyntax: 100,
+    objectAccuracy: 95,
+  },
+  probeQueries: DEFAULT_PROBE_QUERIES,
+  probeEngines: DEFAULT_PROBE_ENGINES,
+  brandMonitorConfig: {
+    configured: false,
+    brandName: "",
+    productUrl: "",
+    competitors: [],
+  },
 
   getAudit: (id) => get().audits.find((a) => a.id === id),
 
   setIntegration: (key, value) => {
     set((s): Partial<State> => ({ integrations: { ...s.integrations, [key]: value } }));
+  },
+
+  setAutoDeployEnabled: (enabled) => {
+    set((): Partial<State> => ({ autoDeployEnabled: enabled }));
+  },
+
+  setEvalThreshold: (key, value) => {
+    set((s): Partial<State> => ({
+      evalThresholds: { ...s.evalThresholds, [key]: value },
+    }));
+  },
+
+  addProbeQuery: (text) => {
+    set((s): Partial<State> => ({
+      probeQueries: [...s.probeQueries, { id: uid(), text, enabled: true }],
+    }));
+  },
+
+  deleteProbeQuery: (id) => {
+    set((s): Partial<State> => {
+      if (s.probeQueries.length <= 1) return {};
+      return { probeQueries: s.probeQueries.filter((q) => q.id !== id) };
+    });
+  },
+
+  updateProbeQuery: (id, text) => {
+    set((s): Partial<State> => ({
+      probeQueries: s.probeQueries.map((q) => q.id === id ? { ...q, text } : q),
+    }));
+  },
+
+  toggleProbeQuery: (id) => {
+    set((s): Partial<State> => ({
+      probeQueries: s.probeQueries.map((q) => q.id === id ? { ...q, enabled: !q.enabled } : q),
+    }));
+  },
+
+  toggleProbeEngine: (id) => {
+    set((s): Partial<State> => ({
+      probeEngines: s.probeEngines.map((e) => e.id === id ? { ...e, enabled: !e.enabled } : e),
+    }));
+  },
+
+  setBrandMonitorConfig: (config) => {
+    set((s): Partial<State> => ({
+      brandMonitorConfig: { ...s.brandMonitorConfig, ...config },
+    }));
   },
 
   notifySlackCritical: (failureRecordId) => {
@@ -194,6 +393,12 @@ export const useEpiphan = create<State>((set, get) => ({
   startAudit: (url) => {
     const id = uid();
     const ctx = inferProductContext(url);
+    const thresholds = get().evalThresholds;
+    const { probeQueries, probeEngines } = get();
+    const resolvedProbeQueries = probeQueries.filter((q) => q.enabled).map((q) => resolveProbeQuery(q.text, ctx));
+    const enabledProbeCount = resolvedProbeQueries.length;
+    const enabledEngineLabels = probeEngines.filter((e) => e.enabled).map((e) => e.label);
+    const enginesStr = enabledEngineLabels.length > 0 ? enabledEngineLabels.join(", ") : "no engines";
     const audit: AuditRecord = {
       id, url, storeName: ctx.brand || deriveStoreName(url),
       status: "running", currentPillar: "P1",
@@ -209,28 +414,77 @@ export const useEpiphan = create<State>((set, get) => ({
         set((s): Partial<State> => ({
           audits: s.audits.map((a) => a.id === id ? { ...a, currentPillar: p } : a),
         }));
+
+        // SoV breakdown computed once when P5 pillar starts — shared by all P5 failures.
+        // brandCited=0 (F5.1 ground truth) + competitorCited=high (F5.2 ground truth).
+        if (p === "P5") {
+          const sov = computeSovBreakdown(probeEngines, enabledProbeCount);
+          set((s): Partial<State> => ({
+            audits: s.audits.map((a) => a.id === id ? { ...a, sovBreakdown: sov } : a),
+          }));
+        }
+
         const candidates = FAILURE_CATALOG.filter((c) => c.pillar === p);
         const picks = candidates.slice(0, Math.min(candidates.length, 3 + (p === "P2" || p === "P4" ? 1 : 0)));
         picks.forEach((c, ci) => {
           setTimeout(() => {
+            const dynamicDetail =
+              c.failureId === "F5.1"
+                ? `${ctx.brand} not cited in any of ${enabledProbeCount} active probe queries across ${enginesStr}. Queries included: "${resolvedProbeQueries[0] ?? ""}"`
+                : c.failureId === "F5.2"
+                ? `Top competitor cited in ${Math.round(enabledProbeCount * 0.8)}/${enabledProbeCount} AI answers across ${enginesStr} for ${ctx.category} queries. Share of voice: 0%.`
+                : c.detail;
+            // Compute missing fields by parsing the existing page markup (fix template "before").
+            // schemaTypes define which registry sections to check against.
+            let missingFields: MissingField[] | undefined;
+            {
+              const schemaTypesFor: Partial<Record<string, SchemaType[]>> = {
+                "F2.1": ["Product", "Offer"],
+                "F2.3": ["Organization"],
+                "F2.4": ["Product", "Offer"],
+                "F3.2": ["FAQPage"],
+              };
+              const schemaTypes = schemaTypesFor[c.failureId];
+              if (schemaTypes) {
+                const tplForGap = fixTemplateFor(
+                  { ...c, id: "gap-probe", auditId: id, status: "detected" as const, detectedAt: 0 },
+                  ctx,
+                );
+                const presentFields = extractJsonLdFields(tplForGap.before);
+                missingFields = computeMissingFields(schemaTypes, presentFields);
+              }
+            }
+
             const failure: Failure = {
               ...c, id: uid(), auditId: id,
               status: "detected", detectedAt: Date.now(),
+              detail: dynamicDetail,
+              ...(missingFields ? { missingFields } : {}),
             };
+
             if (c.isAutofixable) {
               const tpl = fixTemplateFor(failure, ctx);
-              const fp = 96 + Math.floor(Math.random() * 5);
+              const fp = 94 + Math.floor(Math.random() * 7);   // 94–100
+              const sd = 86 + Math.floor(Math.random() * 15);  // 86–100
+              const ss = 92 + Math.floor(Math.random() * 9);   // 92–100
+              const oa = 90 + Math.floor(Math.random() * 11);  // 90–100
               const grounding = 92 + Math.floor(Math.random() * 8);
+              const overall: "PASS" | "FAIL" =
+                fp >= thresholds.factPreservation &&
+                sd >= thresholds.semanticDensity &&
+                ss >= thresholds.structuralSyntax &&
+                oa >= thresholds.objectAccuracy
+                  ? "PASS" : "FAIL";
               failure.fix = {
                 id: uid(), fixType: tpl.type, generatedBy: tpl.model,
                 before: tpl.before, after: tpl.after,
-                evalScores: { factPreservation: fp, semanticDensity: 96, structuralSyntax: 100, objectAccuracy: 98, overall: "PASS" },
+                evalScores: { factPreservation: fp, semanticDensity: sd, structuralSyntax: ss, objectAccuracy: oa, overall },
                 hallucinationScore: 100 - fp,
                 groundingScore: grounding,
                 reasoning: judgeReasoning(failure.pillar, tpl.type, fp, grounding),
                 rollbackSnapshot: tpl.before,
               };
-              failure.status = c.requiresHuman ? "review_pending" : "eval_passed";
+              failure.status = overall === "FAIL" ? "eval_failed" : c.requiresHuman ? "review_pending" : "eval_passed";
               logTrace(set, get, {
                 model: MODEL_MATRIX[tpl.model as keyof typeof MODEL_MATRIX]?.name ?? tpl.model,
                 workflow: `WF-0${p === "P1" ? 8 : p === "P2" ? 9 : p === "P3" ? 10 : 11} ${tpl.type}`,
@@ -246,7 +500,7 @@ export const useEpiphan = create<State>((set, get) => ({
                 durationMs: 400 + Math.floor(Math.random() * 600),
                 tokensIn: 320, tokensOut: 64, costUsd: 0, status: "success",
               });
-              if (!c.requiresHuman) {
+              if (!c.requiresHuman && get().autoDeployEnabled) {
                 const deployId = failure.id;
                 setTimeout(() => {
                   recordDeployment(set, get, deployId);
@@ -320,6 +574,94 @@ export const useEpiphan = create<State>((set, get) => ({
   },
 
   autoFix: (failureId) => { get().approveFix(failureId); },
+
+  regenerateFix: (failureId) => {
+    const state = get();
+    let targetFailure: Failure | undefined;
+    let targetAuditId: string | undefined;
+    let targetCtx: ReturnType<typeof inferProductContext> | undefined;
+
+    for (const a of state.audits) {
+      const f = a.failures.find((x) => x.id === failureId);
+      if (f) { targetFailure = f; targetAuditId = a.id; targetCtx = a.ctx; break; }
+    }
+    if (!targetFailure || !targetAuditId) return;
+
+    set((s): Partial<State> => ({
+      audits: s.audits.map((a) => a.id !== targetAuditId ? a : {
+        ...a,
+        failures: a.failures.map((f) => f.id !== failureId ? f : { ...f, status: "generating" }),
+      }),
+    }));
+
+    toast.message("Regenerating fix…", { description: `Running AI generation for ${targetFailure.failureName}` });
+
+    const thresholds = get().evalThresholds;
+    const ctx = targetCtx!;
+    const failure = targetFailure;
+    const auditId = targetAuditId;
+
+    setTimeout(() => {
+      const tpl = fixTemplateFor(failure, ctx);
+      const fp = 94 + Math.floor(Math.random() * 7);
+      const sd = 86 + Math.floor(Math.random() * 15);
+      const ss = 92 + Math.floor(Math.random() * 9);
+      const oa = 90 + Math.floor(Math.random() * 11);
+      const grounding = 92 + Math.floor(Math.random() * 8);
+      const overall: "PASS" | "FAIL" =
+        fp >= thresholds.factPreservation &&
+        sd >= thresholds.semanticDensity &&
+        ss >= thresholds.structuralSyntax &&
+        oa >= thresholds.objectAccuracy
+          ? "PASS" : "FAIL";
+
+      const newFix: Fix = {
+        id: uid(), fixType: tpl.type, generatedBy: tpl.model,
+        before: tpl.before, after: tpl.after,
+        evalScores: { factPreservation: fp, semanticDensity: sd, structuralSyntax: ss, objectAccuracy: oa, overall },
+        hallucinationScore: 100 - fp,
+        groundingScore: grounding,
+        reasoning: judgeReasoning(failure.pillar, tpl.type, fp, grounding),
+        rollbackSnapshot: tpl.before,
+      };
+
+      const newStatus = overall === "FAIL" ? "eval_failed" : failure.requiresHuman ? "review_pending" : "eval_passed";
+
+      set((s): Partial<State> => ({
+        audits: s.audits.map((a) => a.id !== auditId ? a : {
+          ...a,
+          failures: a.failures.map((f) => f.id !== failureId ? f : {
+            ...f,
+            fix: newFix,
+            status: newStatus,
+            regenerationCount: (f.regenerationCount ?? 0) + 1,
+          }),
+        }),
+      }));
+
+      logTrace(set, get, {
+        model: MODEL_MATRIX[tpl.model as keyof typeof MODEL_MATRIX]?.name ?? tpl.model,
+        workflow: `WF-0${failure.pillar === "P1" ? 8 : failure.pillar === "P2" ? 9 : failure.pillar === "P3" ? 10 : 11} ${tpl.type} (regen)`,
+        promptHash: hash(), operator: "consultant@tessera.eu",
+        durationMs: 600 + Math.floor(Math.random() * 1800),
+        tokensIn: 240 + Math.floor(Math.random() * 800),
+        tokensOut: 80 + Math.floor(Math.random() * 600),
+        costUsd: 0, status: "success",
+      });
+      logTrace(set, get, {
+        model: "Llama 3.3 (Judge)", workflow: "WF-12 Eval Gate (regen)",
+        promptHash: hash(), operator: "system",
+        durationMs: 400 + Math.floor(Math.random() * 600),
+        tokensIn: 320, tokensOut: 64, costUsd: 0, status: "success",
+      });
+
+      if (overall === "PASS") {
+        toast.success("Regenerated fix passed eval gate", { description: `${failure.failureName} is ready to approve.` });
+      } else {
+        toast.error("Regenerated fix failed eval gate again", { description: "You can try again, edit the fix, or lower thresholds in Settings." });
+      }
+    }, 1400 + Math.floor(Math.random() * 800));
+  },
 
   bulkApprove: (ids) => {
     const before = get().fixHistory.length;
@@ -403,85 +745,28 @@ export const useEpiphan = create<State>((set, get) => ({
     toast.message("Rolled back", { description: "Pre-deploy snapshot restored on the live store." });
   },
 
+}), {
+  name: "epiphan-state-v1",
+  partialize: (state) => ({
+    audits: state.audits
+      .filter((a) => a.status !== "running")
+      .map((a) => ({
+        ...a,
+        failures: a.failures.map((f) => ({
+          ...f,
+          status: f.status === "generating" ? ("eval_failed" as const) : f.status,
+          fix: truncateFix(f.fix),
+        })),
+      })),
+    activeAuditId: state.activeAuditId,
+    guardrailEvents: state.guardrailEvents,
+    fixHistory: state.fixHistory,
+    totalCostUsd: state.totalCostUsd,
+    autoDeployEnabled: state.autoDeployEnabled,
+    evalThresholds: state.evalThresholds,
+    probeQueries: state.probeQueries,
+    probeEngines: state.probeEngines,
+    brandMonitorConfig: state.brandMonitorConfig,
+  }),
 }));
 
-// ──────────────────────────────── seed data ────────────────────────────────
-// All seed values must be deterministic — SSR HTML must byte-match the first
-// client render or React throws hydration errors. We use mulberry32 with a
-// fixed seed and a fixed epoch (no Date.now()) so values are stable.
-const SEED_EPOCH = 1748275200000; // fixed point so Date.now() drift can't cause SSR/client mismatch
-function seedAudits(): AuditRecord[] {
-  const rng = mulberry32(hashStr("epiphan-seed-audits-v1"));
-  const a1: AuditRecord = {
-    id: "demo-acme",
-    url: "https://acme-apparel.myshopify.com",
-    storeName: "acme-apparel",
-    status: "complete", currentPillar: null,
-    scores: { P1: 70, P2: 40, P3: 30, P4: 65, P5: 50 },
-    failures: [],
-    createdAt: SEED_EPOCH - 1000 * 60 * 60 * 24 * 2,
-    completedAt: SEED_EPOCH - 1000 * 60 * 60 * 24 * 2 + 1000 * 60 * 47,
-    ctx: DEMO_CTX,
-  };
-  a1.failures = FAILURE_CATALOG.slice(0, 12).map((c) => {
-    const f: Failure = {
-      ...c, id: sUid(rng), auditId: a1.id,
-      status: c.isAutofixable && !c.requiresHuman ? "deployed" : "review_pending",
-      detectedAt: a1.createdAt,
-    };
-    if (c.isAutofixable) {
-      const tpl = fixTemplateFor(f, DEMO_CTX);
-      const fp = 97 + seededInt(rng, 0, 3);
-      const grounding = 93 + seededInt(rng, 0, 6);
-      const userFeedback: "pass" | "fail" | undefined =
-        f.status === "deployed" ? (rng() > 0.18 ? "pass" : "fail") : undefined;
-      f.fix = {
-        id: sUid(rng), fixType: tpl.type, generatedBy: tpl.model,
-        before: tpl.before, after: tpl.after,
-        evalScores: { factPreservation: fp, semanticDensity: 97, structuralSyntax: 100, objectAccuracy: 99, overall: "PASS" },
-        hallucinationScore: 100 - fp,
-        groundingScore: grounding,
-        reasoning: judgeReasoning(f.pillar, tpl.type, fp, grounding),
-        userFeedback,
-        rollbackSnapshot: tpl.before,
-      };
-    }
-    return f;
-  });
-  return [a1];
-}
-
-function seedTraces(): TraceLog[] {
-  const rng = mulberry32(hashStr("epiphan-seed-traces-v1"));
-  const t: TraceLog[] = [];
-  const wfs = [
-    { wf: "WF-02 P1 Audit", model: "Phi-4" },
-    { wf: "WF-09 P2 Schema injection", model: "Llama 3.3 70B" },
-    { wf: "WF-12 Eval Gate", model: "Llama 3.3 (Judge)" },
-    { wf: "WF-11 P4 Alt-text", model: "Llama 3.2-Vision" },
-    { wf: "WF-06 P5 Probes", model: "Llama 3.1 8B (probes)" },
-  ];
-  for (let i = 0; i < 14; i++) {
-    const w = wfs[i % wfs.length];
-    t.push({
-      id: sUid(rng), timestamp: SEED_EPOCH - i * 1000 * 60 * 7,
-      model: w.model, workflow: w.wf, promptHash: sHash(rng),
-      operator: "consultant@tessera.eu",
-      durationMs: 320 + seededInt(rng, 0, 2199),
-      tokensIn: 200 + seededInt(rng, 0, 1199),
-      tokensOut: 60 + seededInt(rng, 0, 799),
-      costUsd: 0, status: i === 11 ? "failure" : "success",
-    });
-  }
-  return t;
-}
-
-function seedGuardrails() {
-  return [
-    { id: "g-1", ts: SEED_EPOCH - 1000 * 60 * 4, rule: "Sovereign Mode", outcome: "allowed" as const, detail: "Routed product copy to local inference — no cloud API touched." },
-    { id: "g-2", ts: SEED_EPOCH - 1000 * 60 * 11, rule: "Destructive Op Lock", outcome: "blocked" as const, detail: "DELETE on /products/784 refused. Used additive Metafield update instead." },
-    { id: "g-3", ts: SEED_EPOCH - 1000 * 60 * 22, rule: "Eval Gate (Hallucination)", outcome: "blocked" as const, detail: "P3 copy claimed '24h delivery' not in source data. Regenerated automatically." },
-    { id: "g-4", ts: SEED_EPOCH - 1000 * 60 * 38, rule: "High-Risk Filter", outcome: "blocked" as const, detail: "Medical claim 'reduces back pain' stripped from supplement copy." },
-    { id: "g-5", ts: SEED_EPOCH - 1000 * 60 * 55, rule: "Rollback Snapshot", outcome: "allowed" as const, detail: "Pre-write snapshot stored for fix #4f2a (robots.txt)." },
-  ];
-}

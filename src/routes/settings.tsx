@@ -1,8 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, useBlocker } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
-import { useEpiphan } from "@/lib/epiphan-store";
-import { useState } from "react";
-import { Save, Lock, Webhook, Slack as SlackIcon, ShoppingBag, Globe, Database, Layers } from "lucide-react";
+import { useEpiphan, EVAL_THRESHOLD_META } from "@/lib/epiphan-store";
+import { resolveProbeQuery, ProductContext } from "@/lib/epiphan-data";
+import { useState, useEffect } from "react";
+import { Save, Webhook, Slack as SlackIcon, ShoppingBag, Globe, Database, Layers, Zap, ShieldCheck, Radio, Trash2, Plus, X, CheckCircle2, CloudCheck } from "lucide-react";
 import { IntegrationConfig } from "@/lib/epiphan-export";
 
 export const Route = createFileRoute("/settings")({
@@ -13,12 +14,68 @@ export const Route = createFileRoute("/settings")({
 function Settings() {
   const integrations = useEpiphan((s) => s.integrations);
   const setIntegration = useEpiphan((s) => s.setIntegration);
+  const autoDeployEnabled = useEpiphan((s) => s.autoDeployEnabled);
+  const setAutoDeployEnabled = useEpiphan((s) => s.setAutoDeployEnabled);
+  const evalThresholds = useEpiphan((s) => s.evalThresholds);
+  const setEvalThreshold = useEpiphan((s) => s.setEvalThreshold);
+  const probeQueries = useEpiphan((s) => s.probeQueries);
+  const probeEngines = useEpiphan((s) => s.probeEngines);
+  const addProbeQuery = useEpiphan((s) => s.addProbeQuery);
+  const deleteProbeQuery = useEpiphan((s) => s.deleteProbeQuery);
+  const updateProbeQuery = useEpiphan((s) => s.updateProbeQuery);
+  const toggleProbeQuery = useEpiphan((s) => s.toggleProbeQuery);
+  const toggleProbeEngine = useEpiphan((s) => s.toggleProbeEngine);
+  const audits = useEpiphan((s) => s.audits);
+  const brandMonitorConfig = useEpiphan((s) => s.brandMonitorConfig);
+  const setBrandMonitorConfig = useEpiphan((s) => s.setBrandMonitorConfig);
+  const previewCtx: ProductContext | null = audits[0]?.ctx ?? null;
   const [ollamaUrl, setOllamaUrl] = useState("http://localhost:11434");
   const [n8nUrl, setN8nUrl] = useState("https://n8n.tessera.internal/webhook/audit/start");
   const [saved, setSaved] = useState(false);
+  const [newQueryText, setNewQueryText] = useState("");
+  const [brandInput, setBrandInput] = useState(brandMonitorConfig.brandName || brandMonitorConfig.productUrl);
+  const [competitorInput, setCompetitorInput] = useState("");
+  const [localCompetitors, setLocalCompetitors] = useState<string[]>(brandMonitorConfig.competitors);
+  const [brandSaved, setBrandSaved] = useState(false);
+  const [probeSaved, setProbeSaved] = useState(false);
+
+  useEffect(() => {
+    setBrandInput(brandMonitorConfig.brandName || brandMonitorConfig.productUrl);
+    setLocalCompetitors(brandMonitorConfig.competitors);
+  }, [brandMonitorConfig]);
+
+  function flashProbeSaved() {
+    setProbeSaved(true);
+    setTimeout(() => setProbeSaved(false), 2000);
+  }
+
+  const savedBrandInput = brandMonitorConfig.brandName || brandMonitorConfig.productUrl;
+  const isBrandDirty =
+    brandInput !== savedBrandInput ||
+    localCompetitors.length !== brandMonitorConfig.competitors.length ||
+    localCompetitors.some((c, i) => c !== brandMonitorConfig.competitors[i]);
+
+  useBlocker({
+    condition: isBrandDirty,
+    blockerFn: () =>
+      Promise.resolve(
+        window.confirm(
+          "You have unsaved Brand Monitoring changes. Leave this page and discard them?"
+        )
+      ),
+  });
+
+  function resetBrandForm() {
+    setBrandInput(savedBrandInput);
+    setLocalCompetitors(brandMonitorConfig.competitors);
+    setCompetitorInput("");
+  }
 
   const upd = <K extends keyof IntegrationConfig>(k: K) =>
     (v: IntegrationConfig[K]) => setIntegration(k, v);
+
+  const activeEngineCount = probeEngines.filter((e) => e.enabled).length;
+  const enabledQueryCount = probeQueries.filter((q) => q.enabled).length;
 
   return (
     <AppShell>
@@ -27,6 +84,375 @@ function Settings() {
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Configuration</div>
           <h1 className="text-2xl font-sans font-medium mt-1">Settings</h1>
         </header>
+
+        {/* Audit behaviour */}
+        <section className="border border-border rounded-lg bg-surface p-6 space-y-4">
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Audit behaviour</div>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Control how detected fixes are handled after the eval gate passes.
+            </p>
+          </div>
+
+          <div className="flex items-start justify-between gap-4 py-3 border-t border-border">
+            <div className="flex items-start gap-3">
+              <Zap className={`w-4 h-4 mt-0.5 ${autoDeployEnabled ? "text-sev-low" : "text-muted-foreground"}`} />
+              <div>
+                <div className="text-xs font-medium text-foreground">Auto-deploy safe fixes</div>
+                <div className="text-[11px] text-muted-foreground mt-0.5 max-w-sm">
+                  When <span className="text-foreground">ON</span> — technical fixes (robots.txt, JSON-LD, canonical tags, WebP conversion) are deployed automatically after passing the eval gate. Copy and image fixes always require human review.<br />
+                  When <span className="text-foreground">OFF</span> — every fix lands in the Review Queue for your approval before anything is deployed.
+                </div>
+              </div>
+            </div>
+            <button
+              role="switch"
+              aria-checked={autoDeployEnabled}
+              onClick={() => setAutoDeployEnabled(!autoDeployEnabled)}
+              className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${autoDeployEnabled ? "bg-primary" : "bg-muted"}`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200 ${autoDeployEnabled ? "translate-x-4" : "translate-x-0"}`}
+              />
+            </button>
+          </div>
+          <div className={`text-[10px] px-3 py-2 rounded border ${autoDeployEnabled ? "border-sev-low/30 bg-sev-low/5 text-sev-low" : "border-border text-muted-foreground"}`}>
+            {autoDeployEnabled
+              ? "● Auto-deploy ON — safe fixes will deploy automatically after eval gate."
+              : "● Auto-deploy OFF — all fixes route to the Review Queue for manual approval."}
+          </div>
+        </section>
+
+        {/* Eval gate */}
+        <section className="border border-border rounded-lg bg-surface p-6 space-y-5">
+          <div>
+            <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+              <ShieldCheck className="w-3 h-3" /> Eval gate thresholds
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Every AI-generated fix is scored by a judge model (Llama 3.3) on four axes before it can be approved or deployed.
+              A fix that misses <em>any</em> threshold is marked <span className="text-sev-critical">Eval failed</span> and blocked from the deploy path until regenerated.
+            </p>
+          </div>
+
+          {EVAL_THRESHOLD_META.map((m) => (
+            <div key={m.key} className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-xs font-medium text-foreground">{m.label}</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5 max-w-lg">{m.description}</div>
+                </div>
+                <div className="text-sm tabular-nums font-medium text-foreground ml-4 w-12 text-right">
+                  {evalThresholds[m.key]}%
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-[9px] text-muted-foreground w-4">0</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={evalThresholds[m.key]}
+                  onChange={(e) => setEvalThreshold(m.key, Number(e.target.value))}
+                  className="flex-1 accent-primary h-1.5"
+                />
+                <span className="text-[9px] text-muted-foreground w-6">100</span>
+              </div>
+              <div className="flex justify-between text-[9px] text-muted-foreground px-7">
+                <span>← More permissive</span>
+                <span className={evalThresholds[m.key] >= 95 ? "text-sev-low" : evalThresholds[m.key] >= 80 ? "text-sev-medium" : "text-sev-critical"}>
+                  {evalThresholds[m.key] >= 95 ? "Strict" : evalThresholds[m.key] >= 80 ? "Balanced" : "Permissive"}
+                </span>
+                <span>Stricter →</span>
+              </div>
+            </div>
+          ))}
+
+          <div className="pt-2 border-t border-border">
+            <button
+              onClick={() => EVAL_THRESHOLD_META.forEach((m) => setEvalThreshold(m.key, m.default))}
+              className="text-[10px] text-muted-foreground hover:text-foreground underline underline-offset-2"
+            >
+              Reset to defaults
+            </button>
+            <span className="text-[10px] text-muted-foreground ml-3">
+              (Fact Preservation: 100 · Semantic Density: 90 · Structural Syntax: 100 · Object Accuracy: 95)
+            </span>
+          </div>
+        </section>
+
+        {/* Brand Monitoring Setup */}
+        <section id="brand-monitoring" className="border border-border rounded-lg bg-surface p-6 space-y-5">
+          <div>
+            <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+              <Radio className="w-3 h-3" /> Brand Monitoring Setup
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Define your brand and up to 5 competitors. Once saved, the Brand Monitoring dashboard will activate.
+            </p>
+          </div>
+
+          {brandMonitorConfig.configured && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded border border-sev-low/30 bg-sev-low/5 text-sev-low text-[11px]">
+              <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+              Brand monitoring is active for <span className="font-medium ml-1">{brandMonitorConfig.brandName || brandMonitorConfig.productUrl}</span>
+            </div>
+          )}
+
+          <div>
+            <label className="text-[10px] uppercase tracking-widest text-muted-foreground block mb-1.5">
+              Brand name or Product URL
+            </label>
+            <input
+              type="text"
+              value={brandInput}
+              onChange={(e) => setBrandInput(e.target.value)}
+              placeholder="e.g. Acme Apparel or https://acme-apparel.com"
+              className={inputCls}
+            />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                Competitors <span className="text-muted-foreground/50 normal-case">({localCompetitors.length}/5)</span>
+              </label>
+            </div>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {localCompetitors.map((name) => (
+                <span key={name} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border bg-background text-xs text-foreground">
+                  {name}
+                  <button
+                    onClick={() => setLocalCompetitors((prev) => prev.filter((c) => c !== name))}
+                    className="text-muted-foreground hover:text-sev-critical transition-colors"
+                    aria-label={`Remove ${name}`}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+              {localCompetitors.length === 0 && (
+                <span className="text-[11px] text-muted-foreground/50 italic">No competitors added yet.</span>
+              )}
+            </div>
+            {localCompetitors.length < 5 && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={competitorInput}
+                  onChange={(e) => setCompetitorInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && competitorInput.trim() && localCompetitors.length < 5) {
+                      const name = competitorInput.trim();
+                      if (!localCompetitors.includes(name)) {
+                        setLocalCompetitors((prev) => [...prev, name]);
+                      }
+                      setCompetitorInput("");
+                    }
+                  }}
+                  placeholder="Type competitor name and press Enter…"
+                  className="flex-1 bg-background border border-border rounded px-3 py-1.5 text-[11px] font-mono outline-none focus:border-primary"
+                />
+                <button
+                  onClick={() => {
+                    const name = competitorInput.trim();
+                    if (name && localCompetitors.length < 5 && !localCompetitors.includes(name)) {
+                      setLocalCompetitors((prev) => [...prev, name]);
+                      setCompetitorInput("");
+                    }
+                  }}
+                  disabled={!competitorInput.trim() || localCompetitors.length >= 5}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-border text-[10px] text-muted-foreground hover:text-foreground hover:border-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Plus className="w-3 h-3" /> Add
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="pt-2 border-t border-border flex items-center justify-between">
+            <div className="text-[11px] text-muted-foreground">
+              Active probe queries:{" "}
+              <Link
+                to="/settings"
+                hash="probe-configuration"
+                className="text-primary underline underline-offset-2 hover:opacity-80"
+              >
+                {probeQueries.filter((q) => q.enabled).length} queries · {probeEngines.filter((e) => e.enabled).length} engines
+              </Link>
+            </div>
+            <div className="flex items-center gap-2">
+              {isBrandDirty && (
+                <button
+                  onClick={resetBrandForm}
+                  className="px-3 py-2 rounded border border-border text-xs text-muted-foreground hover:text-foreground hover:border-primary transition-colors"
+                >
+                  Reset
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  const isUrl = brandInput.startsWith("http") || brandInput.includes(".");
+                  const next = {
+                    configured: !!brandInput.trim(),
+                    brandName: isUrl ? "" : brandInput.trim(),
+                    productUrl: isUrl ? brandInput.trim() : "",
+                    competitors: localCompetitors,
+                  };
+                  setBrandMonitorConfig(next);
+                  setBrandSaved(true);
+                  setTimeout(() => setBrandSaved(false), 1800);
+                }}
+                disabled={!brandInput.trim()}
+                className="px-4 py-2 rounded bg-primary text-primary-foreground text-xs flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Save className="w-3 h-3" /> {brandSaved ? "Saved!" : "Save"}
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Probe configuration */}
+        <section id="probe-configuration" className="border border-border rounded-lg bg-surface p-6 space-y-5">
+          <div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-muted-foreground">
+                <Radio className="w-3 h-3" /> Probe configuration
+              </div>
+              <div className={`flex items-center gap-1 text-[10px] text-sev-low transition-opacity duration-300 ${probeSaved ? "opacity-100" : "opacity-0"}`}>
+                <CloudCheck className="w-3 h-3" />
+                Changes auto-saved
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Configure which AI engines and query strings are used during P5 Share-of-Voice probing.
+              Changes apply to the next audit you run.
+            </p>
+          </div>
+
+          {/* Engine toggles */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Probe engines</div>
+              <div className="text-[10px] text-muted-foreground tabular-nums">
+                {activeEngineCount} of {probeEngines.length} active
+              </div>
+            </div>
+            {probeEngines.map((engine) => (
+              <div key={engine.id} className="flex items-center justify-between px-3 py-2.5 border border-border rounded bg-background">
+                <div className="flex items-center gap-2">
+                  <span className={`w-1.5 h-1.5 rounded-full ${engine.enabled ? "bg-sev-low" : "bg-muted-foreground/40"}`} />
+                  <span className="text-xs font-medium text-foreground">{engine.label}</span>
+                </div>
+                <button
+                  role="switch"
+                  aria-checked={engine.enabled}
+                  onClick={() => { toggleProbeEngine(engine.id); flashProbeSaved(); }}
+                  className={`relative inline-flex h-4 w-8 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${engine.enabled ? "bg-primary" : "bg-muted"}`}
+                >
+                  <span className={`inline-block h-3 w-3 transform rounded-full bg-white shadow transition duration-200 ${engine.enabled ? "translate-x-4" : "translate-x-0"}`} />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* Probe queries */}
+          <div className="space-y-2 pt-2 border-t border-border">
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Probe queries</div>
+              <div className="text-[10px] text-muted-foreground tabular-nums">
+                {enabledQueryCount} of {probeQueries.length} active
+              </div>
+            </div>
+
+            {/* Variable legend */}
+            <div className="flex flex-col gap-1 px-3 py-2 rounded border border-border bg-background/60 text-[10px] text-muted-foreground">
+              <span className="font-medium text-foreground/60 mb-0.5">Template variables</span>
+              {([
+                ["{{brand}}", "audited brand name", previewCtx?.brand],
+                ["{{productName}}", "inferred product title", previewCtx?.productName],
+                ["{{category}}", "inferred product category", previewCtx?.category],
+                ["{{industry}}", "inferred industry / vertical", previewCtx?.industry],
+              ] as [string, string, string | undefined][]).map(([variable, meaning, value]) => (
+                <div key={variable} className="flex items-baseline gap-2 flex-wrap">
+                  <code className="text-primary/80 font-mono">{variable}</code>
+                  <span className="text-muted-foreground/60">— {meaning}</span>
+                  {value && <span className="text-muted-foreground/50 italic">({value})</span>}
+                </div>
+              ))}
+              {!previewCtx && <span className="italic text-muted-foreground/40 mt-0.5">Run an audit to see the current resolved values.</span>}
+            </div>
+
+            <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+              {probeQueries.map((query, idx) => {
+                const resolved = previewCtx ? resolveProbeQuery(query.text, previewCtx) : query.text;
+                return (
+                  <div key={query.id} className="group">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] text-muted-foreground tabular-nums w-4 text-right flex-shrink-0">{idx + 1}</span>
+                      <button
+                        role="switch"
+                        aria-checked={query.enabled}
+                        onClick={() => { toggleProbeQuery(query.id); flashProbeSaved(); }}
+                        title={query.enabled ? "Disable query" : "Enable query"}
+                        className={`relative inline-flex h-3.5 w-6 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${query.enabled ? "bg-primary" : "bg-muted"}`}
+                      >
+                        <span className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white shadow transition duration-200 ${query.enabled ? "translate-x-2.5" : "translate-x-0"}`} />
+                      </button>
+                      <input
+                        type="text"
+                        value={query.text}
+                        onChange={(e) => { updateProbeQuery(query.id, e.target.value); flashProbeSaved(); }}
+                        className={`flex-1 bg-background border border-border rounded px-2 py-1 text-[11px] font-mono outline-none focus:border-primary transition-opacity ${query.enabled ? "opacity-100" : "opacity-40"}`}
+                      />
+                      <button
+                        onClick={() => { deleteProbeQuery(query.id); flashProbeSaved(); }}
+                        disabled={probeQueries.length <= 1}
+                        title={probeQueries.length <= 1 ? "At least one probe query required" : "Delete query"}
+                        className="flex-shrink-0 p-1 rounded text-muted-foreground hover:text-sev-critical hover:bg-sev-critical/10 transition-colors disabled:opacity-20 disabled:cursor-not-allowed opacity-0 group-hover:opacity-100"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <div className="ml-[52px] mt-0.5 text-[10px] text-muted-foreground/60 font-mono truncate">
+                      ↳ {resolved}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <input
+                type="text"
+                value={newQueryText}
+                onChange={(e) => setNewQueryText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && newQueryText.trim()) {
+                    addProbeQuery(newQueryText.trim());
+                    setNewQueryText("");
+                    flashProbeSaved();
+                  }
+                }}
+                placeholder="Type a new probe query and press Enter…"
+                className="flex-1 bg-background border border-border rounded px-3 py-1.5 text-[11px] font-mono outline-none focus:border-primary"
+              />
+              <button
+                onClick={() => {
+                  if (newQueryText.trim()) {
+                    addProbeQuery(newQueryText.trim());
+                    setNewQueryText("");
+                    flashProbeSaved();
+                  }
+                }}
+                disabled={!newQueryText.trim()}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded border border-border text-[10px] text-muted-foreground hover:text-foreground hover:border-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Plus className="w-3 h-3" /> Add probe
+              </button>
+            </div>
+          </div>
+        </section>
 
         {/* Core stack */}
         <section className="border border-border rounded-lg bg-surface p-6 space-y-5">

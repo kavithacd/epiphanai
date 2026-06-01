@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useMemo } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useEpiphan } from "@/lib/epiphan-store";
-import { MODEL_MATRIX, PILLARS, Failure, Fix } from "@/lib/epiphan-data";
+import { MODEL_MATRIX, PILLARS, Failure, Fix, mulberry32 } from "@/lib/epiphan-data";
 import { Cpu, ShieldCheck, ShieldAlert, Lock, Activity, Coins, ThumbsUp, ThumbsDown, Microscope } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
@@ -302,15 +303,23 @@ function GuardCard({ icon, title, status, detail }: { icon: React.ReactNode; tit
 }
 
 function EvalSparkline({ color, passRate, runs }: { color: string; passRate: number; runs: number }) {
-  const bars = Array.from({ length: runs }, () => Math.random() > 0.05 ? 1 : 0);
+  const bars = useMemo(() => {
+    const rng = mulberry32(runs * 137 + passRate * 13);
+    return Array.from({ length: runs }, () => {
+      const pass = rng() > 0.05;
+      const height = pass ? 50 + rng() * 50 : 20;
+      return { pass, height };
+    });
+  }, [runs, passRate]);
+
   return (
     <div>
       <div className="flex items-end gap-0.5 h-16">
         {bars.map((b, i) => (
           <div key={i} className="flex-1 rounded-sm" style={{
-            height: b ? `${50 + Math.random() * 50}%` : "20%",
-            background: b ? color : "var(--sev-critical)",
-            opacity: b ? 0.7 : 1,
+            height: `${b.height}%`,
+            background: b.pass ? color : "var(--sev-critical)",
+            opacity: b.pass ? 0.7 : 1,
           }} />
         ))}
       </div>

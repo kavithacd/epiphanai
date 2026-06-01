@@ -1,0 +1,313 @@
+There are no official “AI product citation APIs” for ChatGPT, Perplexity, or Gemini. They all behave much more like very advanced search engines: they crawl the open web, build internal knowledge graphs, and then choose which sources to surface and cite.
+
+What you control is:
+
+1. how clearly your product is described on-page, and
+
+2. how well that information is exposed via structured data (mainly schema.org JSON‑LD).
+
+Below is what to provide and how to structure it so you give these models the best possible chance to cite you.
+
+1. The product information you should expose
+
+Think in terms of “entity definition” (who you are) and “offer definition” (what the product is).
+
+At minimum, you want:
+
+- Clear Organization entity
+
+ ▫ Brand name (and common variants)
+
+ ▫ Website URL
+
+ ▫ Logo
+
+ ▫ Short description: “We do X for Y”
+
+ ▫ SameAs links to LinkedIn, YouTube, etc.
+
+- Clear Product entity
+
+ ▫ Product name and brand
+
+ ▫ Short, unambiguous description
+
+ ▫ Category / type (e.g. “dog food subscription for large breeds”)
+
+ ▫ Price, currency, availability
+
+ ▫ Target audience or use case (e.g. “for small ecommerce brands,” “for cat owners”)
+
+ ▫ Key specs / attributes that show up in comparisons (size, ingredients, platform, region, etc.)
+
+ ▫ Reviews/ratings if you have them
+
+Modern LLM-powered answer engines benefit when this is available as structured JSON‑LD, not just prose. JSON‑LD lets them disambiguate entities and prices instead of guessing from HTML. ​⁠https://ailabsaudit.com/blog/en/schema-markup-ai-visibility-guide
+
+2. JSON-LD schemas that matter most for AI citations
+
+Across ChatGPT, Gemini, Perplexity and the broader “AI search” ecosystem, the same schema.org patterns keep showing up as useful signals:
+
+- Organization – defines your brand as an entity.
+
+- Product (+ Offer) – defines what you sell and for how much.
+
+- FAQPage – gives Q&A pairs that AIs can lift directly into answers.
+
+- HowTo – for step-by-step guides around setup, usage, or recipes.
+
+- Article / Blog content – for educational content that might be summarized and cited. ​⁠https://ailabsaudit.com/blog/en/schema-markup-ai-visibility-guide
+
+Google’s own structured data guidelines recommend JSON‑LD and emphasize that markup must match real page content, must be complete (required fields), and can’t be misleading. That same discipline helps AI engines as well. ​⁠https://developers.google.com/search/docs/appearance/structured-data/sd-policies
+
+Important nuance: a large Ahrefs study of 1,885 pages that added JSON‑LD found no reliable, direct uplift in AI citations just from adding schema alone; the effect was at best tiny. So think of schema as table stakes for clarity and eligibility, not a magic growth lever. ​⁠https://ahrefs.com/blog/schema-ai-citations/
+
+3. Concrete JSON‑LD examples you can copy
+
+These are generic schema.org examples but they’re exactly the kind of structure ChatGPT, Gemini, and Perplexity can digest.
+
+3.1 Organization: define your brand
+
+Put something like this in the ‎⁠<head>⁠ of your site (typically on the homepage):<script type="application/ld+json">
+
+{
+
+  "@context": "https://schema.org",
+
+  "@type": "Organization",
+
+  "name": "Acme Pet Nutrition",
+
+  "alternateName": "Acme Pets",
+
+  "url": "https://www.acmepetnutrition.com",
+
+  "logo": "https://www.acmepetnutrition.com/logo.png",
+
+  "description": "We create high-protein, grain-free dog and cat food for urban pet parents.",
+
+  "foundingDate": "2021",
+
+  "sameAs": [
+
+    "https://www.linkedin.com/company/acmepetnutrition",
+
+    "https://www.youtube.com/@acmepetnutrition"
+
+  ],
+
+  "contactPoint": {
+
+    "@type": "ContactPoint",
+
+    "contactType": "customer support",
+
+    "email": "support@acmepetnutrition.com",
+
+    "availableLanguage": ["English", "German"]
+
+  }
+
+}
+
+</script>
+
+This helps AIs tie together your site, LinkedIn, YouTube, etc. into a single brand entity. ​⁠https://ailabsaudit.com/blog/en/schema-markup-ai-visibility-guide
+
+3.2 Product: define what’s actually being sold
+
+On each product detail page, add a Product schema. For ecommerce, something like:<script type="application/ld+json">
+
+{
+
+  "@context": "https://schema.org",
+
+  "@type": "Product",
+
+  "name": "Acme Grain-Free Salmon Dog Food 5kg",
+
+  "image": [
+
+    "https://www.acmepetnutrition.com/images/salmon-5kg-front.jpg"
+
+  ],
+
+  "description": "High-protein, grain-free dry dog food with fresh salmon and sweet potato, formulated for adult medium and large breeds.",
+
+  "sku": "ACME-SALMON-5KG",
+
+  "brand": {
+
+    "@type": "Organization",
+
+    "name": "Acme Pet Nutrition"
+
+  },
+
+  "category": "Dog Food",
+
+  "audience": {
+
+    "@type": "Audience",
+
+    "audienceType": "Dog owners",
+
+    "geographicArea": {
+
+      "@type": "Country",
+
+      "name": "Germany"
+
+    }
+
+  },
+
+  "nutrition": {
+
+    "@type": "NutritionInformation",
+
+    "proteinContent": "28%",
+
+    "fatContent": "16%",
+
+    "carbohydrateContent": "32%"
+
+  },
+
+  "offers": {
+
+    "@type": "Offer",
+
+    "url": "https://www.acmepetnutrition.com/products/grain-free-salmon-dog-food-5kg",
+
+    "priceCurrency": "EUR",
+
+    "price": "39.99",
+
+    "availability": "https://schema.org/InStock"
+
+  },
+
+  "aggregateRating": {
+
+    "@type": "AggregateRating",
+
+    "ratingValue": "4.7",
+
+    "reviewCount": "218"
+
+  }
+
+}
+
+</script>
+
+Key ideas:
+
+- Use a precise, disambiguated name.
+
+- Put all the attributes that matter for comparisons (size, ingredients, species, region, etc.).
+
+- Include price and availability via ‎⁠Offer⁠, plus ratings if you have them.
+
+This closely mirrors the “Product” structured data Google recommends for Search rich results; the same structure is also easy for generative AIs to consume. ​⁠https://developers.google.com/search/docs/appearance/structured-data/sd-policies
+
+3.3 FAQPage: give ready-made Q&A blocks
+
+FAQ schema is especially useful for AI answer engines, because it already matches their native Q&A format. ​⁠https://ailabsaudit.com/blog/en/schema-markup-ai-visibility-guide<script type="application/ld+json">
+
+{
+
+  "@context": "https://schema.org",
+
+  "@type": "FAQPage",
+
+  "mainEntity": [
+
+    {
+
+      "@type": "Question",
+
+      "name": "Is Acme Grain-Free Salmon Dog Food suitable for puppies?",
+
+      "acceptedAnswer": {
+
+        "@type": "Answer",
+
+        "text": "No. This recipe is formulated for adult dogs 12 months and older. For puppies, we recommend the Acme Puppy Starter formula."
+
+      }
+
+    },
+
+    {
+
+      "@type": "Question",
+
+      "name": "Is Acme Grain-Free Salmon Dog Food good for dogs with sensitive stomachs?",
+
+      "acceptedAnswer": {
+
+        "@type": "Answer",
+
+        "text": "Yes, many dogs with grain sensitivities tolerate this recipe well because it is grain-free and uses salmon as a single animal protein. However, you should always introduce new food gradually over 7–10 days."
+
+      }
+
+    }
+
+  ]
+
+}
+
+</script>
+
+Make sure the same FAQs appear visibly on the page (not only in JSON‑LD) to comply with Google’s and other platforms’ guidelines.
+
+4. How this maps to each AI system
+
+ChatGPT
+
+- When browsing is enabled, ChatGPT pulls from Bing / OpenAI’s search stack.
+
+- It tends to cite:
+
+ ▫ Clear, focused articles and docs
+
+ ▫ Pages with clean HTML and unambiguous information
+
+ ▫ Structured data (JSON‑LD) where available
+
+- There is no special “ChatGPT product schema,” but standard schema.org ‎⁠Organization⁠, ‎⁠Product⁠, ‎⁠FAQPage⁠, ‎⁠Article⁠ all help it understand and potentially cite you.
+
+Perplexity
+
+- Perplexity is explicitly citation-first; its product pages emphasize “verified citations.”
+
+- It relies on web content plus standard SEO/structured data practices; several AI SEO practitioners report more frequent citations when pages have correct JSON‑LD, clear entities, and FAQ/HowTo structures. ​⁠https://ailabsaudit.com/blog/en/schema-markup-ai-visibility-guide
+
+- There is no official Perplexity-only JSON spec; they piggyback on the same schema ecosystem as Google.
+
+Gemini
+
+- Gemini’s web answers are deeply tied to Google’s search infrastructure.
+
+- Implementing Google-compliant structured data (especially Product, Organization, FAQPage, HowTo) is the most direct way to make product info machine-readable for Gemini. ​⁠https://developers.google.com/search/docs/appearance/structured-data/sd-policies
+
+- Again: it’s an enabler, not a guarantee of citation.
+
+5. Practical guidelines and mindset
+
+To make models more likely to cite your product:
+
+- Ensure your product pages are indexable and fast (no robots.txt blocking, no ‎⁠noindex⁠).
+
+- Define your brand and products as schema.org entities via JSON‑LD (Organization + Product + FAQPage where relevant).
+
+- Make sure structured data actually matches visible content (no “invisible markup”). ​⁠https://developers.google.com/search/docs/appearance/structured-data/sd-policies
+
+- Publish strong, comparison-friendly content: “Acme Salmon vs Brand X”, “Best dog food for sensitive stomachs in Germany”, etc., with honest pros/cons. This is the stuff answer engines love to quote.
+
+- Accept that schema is a clarity and eligibility layer, not a silver bullet for AI visibility. ​⁠https://ahrefs.com/blog/schema-ai-citations/
+
+If you tell me your niche (e.g., “AI agents for ecommerce returns,” “pet food subscription,” “email marketing SaaS for Shopify”), I can adapt the Product + FAQ JSON‑LD templates to your exact use case.
