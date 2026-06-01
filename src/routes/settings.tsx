@@ -26,7 +26,7 @@ function Settings() {
   const toggleProbeQuery = useEpiphan((s) => s.toggleProbeQuery);
   const toggleProbeEngine = useEpiphan((s) => s.toggleProbeEngine);
   const audits = useEpiphan((s) => s.audits);
-  const previewCtx: ProductContext = audits[0]?.ctx ?? DEMO_CTX;
+  const previewCtx: ProductContext | null = audits[0]?.ctx ?? null;
   const [ollamaUrl, setOllamaUrl] = useState("http://localhost:11434");
   const [n8nUrl, setN8nUrl] = useState("https://n8n.tessera.internal/webhook/audit/start");
   const [saved, setSaved] = useState(false);
@@ -193,23 +193,22 @@ function Settings() {
             {/* Variable legend */}
             <div className="flex flex-wrap gap-x-4 gap-y-1 px-3 py-2 rounded border border-border bg-background/60 text-[10px] text-muted-foreground">
               <span className="font-medium text-foreground/60">Template variables:</span>
-              {[
-                ["{{brand}}", previewCtx.brand],
-                ["{{category}}", previewCtx.category],
-                ["{{industry}}", previewCtx.industry],
-                ["{{productName}}", previewCtx.productName],
-              ].map(([variable, example]) => (
+              {(["{{brand}}", "{{category}}", "{{industry}}", "{{productName}}"] as const).map((variable) => (
                 <span key={variable}>
                   <code className="text-primary/80 font-mono">{variable}</code>
-                  <span className="text-muted-foreground/60"> → {example}</span>
+                  {previewCtx && (
+                    <span className="text-muted-foreground/60">
+                      {" → "}{variable === "{{brand}}" ? previewCtx.brand : variable === "{{category}}" ? previewCtx.category : variable === "{{industry}}" ? previewCtx.industry : previewCtx.productName}
+                    </span>
+                  )}
                 </span>
               ))}
+              {!previewCtx && <span className="italic text-muted-foreground/50">— run an audit to see resolved values</span>}
             </div>
 
             <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
               {probeQueries.map((query, idx) => {
-                const resolved = resolveProbeQuery(query.text, previewCtx);
-                const hasVars = resolved !== query.text;
+                const resolved = previewCtx ? resolveProbeQuery(query.text, previewCtx) : query.text;
                 return (
                   <div key={query.id} className="group">
                     <div className="flex items-center gap-2">
@@ -238,11 +237,11 @@ function Settings() {
                         <Trash2 className="w-3 h-3" />
                       </button>
                     </div>
-                    {hasVars && (
-                      <div className="ml-[52px] mt-0.5 text-[10px] text-muted-foreground/70 font-mono truncate">
-                        ↳ {resolved}
-                      </div>
-                    )}
+                    <div className="ml-[52px] mt-0.5 text-[10px] text-muted-foreground/60 font-mono truncate">
+                      {previewCtx
+                        ? <span>↳ {resolved}</span>
+                        : <span className="italic">↳ run an audit to preview resolved text</span>}
+                    </div>
                   </div>
                 );
               })}

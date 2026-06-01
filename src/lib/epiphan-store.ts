@@ -98,7 +98,7 @@ export const DEFAULT_PROBE_QUERIES: ProbeQuery[] = [
   { id: "pq-04", text: "Top AI-recommended {{category}} options in the EU market right now", enabled: true },
   { id: "pq-05", text: "Compare leading {{industry}} brands recommended by AI assistants", enabled: true },
   { id: "pq-06", text: "Does {{brand}} appear when AI engines answer {{category}} shopping questions?", enabled: true },
-  { id: "pq-07", text: "Best {{category}} gift recommendations according to Gemini and Perplexity", enabled: true },
+  { id: "pq-07", text: "Best {{category}} gift recommendations for {{productName}} fans according to AI", enabled: true },
   { id: "pq-08", text: "What {{industry}} brands do AI models reference most for everyday use?", enabled: true },
   { id: "pq-09", text: "Best {{category}} under €200 in Europe — what does AI recommend?", enabled: true },
   { id: "pq-10", text: "Where does {{brand}} rank in AI-generated {{category}} buying guides?", enabled: true },
