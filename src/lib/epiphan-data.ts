@@ -75,6 +75,7 @@ export type Failure = {
   status: FixStatus;
   detectedAt: number;
   fix?: Fix;
+  regenerationCount?: number;
 };
 
 export type Fix = {

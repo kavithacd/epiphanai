@@ -518,7 +518,12 @@ export const useEpiphan = create<State>()(persist((set, get) => ({
       set((s): Partial<State> => ({
         audits: s.audits.map((a) => a.id !== auditId ? a : {
           ...a,
-          failures: a.failures.map((f) => f.id !== failureId ? f : { ...f, fix: newFix, status: newStatus }),
+          failures: a.failures.map((f) => f.id !== failureId ? f : {
+            ...f,
+            fix: newFix,
+            status: newStatus,
+            regenerationCount: (f.regenerationCount ?? 0) + 1,
+          }),
         }),
       }));
 

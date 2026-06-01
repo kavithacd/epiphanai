@@ -510,6 +510,9 @@ function FailureRow({ f, checked, onCheck, selectable }: { f: Failure; checked: 
   const isGenerating = f.status === "generating";
   const canAutoFix = f.fix && (f.status === "eval_passed" || f.status === "detected");
   const isPending = f.status === "review_pending";
+  const MAX_REGEN = 5;
+  const regenCount = f.regenerationCount ?? 0;
+  const regenLimitReached = regenCount >= MAX_REGEN;
 
   const disabledTitle = !selectable
     ? isManual ? "No automated fix available — expand for manual action guidance"
@@ -563,8 +566,11 @@ function FailureRow({ f, checked, onCheck, selectable }: { f: Failure; checked: 
             </button>
           )}
           {isEvalFailed && !isGenerating && (
-            <button onClick={() => regenerateFix(f.id)}
-              className="px-2 py-1 rounded border border-sev-medium/40 text-sev-medium hover:bg-sev-medium/10 text-[10px] flex items-center gap-1">
+            <button
+              onClick={() => !regenLimitReached && regenerateFix(f.id)}
+              disabled={regenLimitReached}
+              title={regenLimitReached ? "5 attempts reached — lower thresholds in Settings → Eval gate instead" : undefined}
+              className={`px-2 py-1 rounded border text-[10px] flex items-center gap-1 ${regenLimitReached ? "border-border text-muted-foreground opacity-40 cursor-not-allowed" : "border-sev-medium/40 text-sev-medium hover:bg-sev-medium/10"}`}>
               <RefreshCw className="w-3 h-3" /> Retry
             </button>
           )}
@@ -599,6 +605,11 @@ function FailureRow({ f, checked, onCheck, selectable }: { f: Failure; checked: 
               {/* Quality gate header */}
               <div className="px-3 pt-3 pb-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border">
                 <span>AI quality checks</span>
+                {isEvalFailed && (f.regenerationCount ?? 0) > 0 && (
+                  <span className="normal-case tracking-normal font-medium text-sev-medium">
+                    Attempt {(f.regenerationCount ?? 0) + 1}
+                  </span>
+                )}
                 {isEvalFailed ? (
                   <>
                     {(["factPreservation", "semanticDensity", "structuralSyntax", "objectAccuracy"] as const).map((key) => {
@@ -707,12 +718,17 @@ function FailureRow({ f, checked, onCheck, selectable }: { f: Failure; checked: 
                       </button>
                       {isEvalFailed && (
                         <>
-                          <button onClick={() => regenerateFix(f.id)}
-                            className="px-3 py-1.5 rounded border border-sev-medium/50 text-sev-medium hover:bg-sev-medium/10 text-[11px] flex items-center gap-1.5">
+                          <button
+                            onClick={() => !regenLimitReached && regenerateFix(f.id)}
+                            disabled={regenLimitReached}
+                            title={regenLimitReached ? "5 attempts reached — lower thresholds in Settings → Eval gate instead" : undefined}
+                            className={`px-3 py-1.5 rounded border text-[11px] flex items-center gap-1.5 ${regenLimitReached ? "border-border text-muted-foreground opacity-40 cursor-not-allowed" : "border-sev-medium/50 text-sev-medium hover:bg-sev-medium/10"}`}>
                             <RefreshCw className="w-3 h-3" /> Regenerate
                           </button>
                           <span className="text-[10px] text-muted-foreground ml-1">
-                            The failed scores are shown above — approving deploys the fix as-is, bypassing those checks
+                            {regenLimitReached
+                              ? "5 attempts reached — lower your eval thresholds in Settings → Eval gate, or edit the fix manually"
+                              : "The failed scores are shown above — approving deploys the fix as-is, bypassing those checks"}
                           </span>
                         </>
                       )}
