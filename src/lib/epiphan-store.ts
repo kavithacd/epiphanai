@@ -156,16 +156,16 @@ export type BrandMonitorConfig = {
 };
 
 export const DEFAULT_PROBE_QUERIES: ProbeQuery[] = [
-  { id: "pq-01", text: "Is {{brand}} recommended by AI assistants for {{category}} in Europe?", enabled: true },
-  { id: "pq-02", text: "Best {{category}} brands recommended by ChatGPT and Gemini in 2025", enabled: true },
-  { id: "pq-03", text: "Which {{industry}} brand is most cited by AI for quality and value?", enabled: true },
-  { id: "pq-04", text: "Top AI-recommended {{category}} options in the EU market right now", enabled: true },
-  { id: "pq-05", text: "Compare leading {{industry}} brands recommended by AI assistants", enabled: true },
-  { id: "pq-06", text: "Does {{brand}} appear when AI engines answer {{category}} shopping questions?", enabled: true },
-  { id: "pq-07", text: "Best {{category}} gift recommendations for {{productName}} fans according to AI", enabled: true },
-  { id: "pq-08", text: "What {{industry}} brands do AI models reference most for everyday use?", enabled: true },
-  { id: "pq-09", text: "Best {{category}} under €200 in Europe — what does AI recommend?", enabled: true },
-  { id: "pq-10", text: "Where does {{brand}} rank in AI-generated {{category}} buying guides?", enabled: true },
+  { id: "pq-01", text: "What's the best {{category}} to buy right now?", enabled: true },
+  { id: "pq-02", text: "Which {{category}} brand would you recommend for everyday use?", enabled: true },
+  { id: "pq-03", text: "I'm shopping for a {{category}} — what brand should I go with?", enabled: true },
+  { id: "pq-04", text: "What are the most popular {{category}} brands in Europe?", enabled: true },
+  { id: "pq-05", text: "I need a good {{category}} as a gift — what do you suggest?", enabled: true },
+  { id: "pq-06", text: "Is {{brand}} worth it compared to other {{category}} options?", enabled: true },
+  { id: "pq-07", text: "What {{category}} do most people actually love and recommend?", enabled: true },
+  { id: "pq-08", text: "What's a reliable {{category}} brand that's worth the money?", enabled: true },
+  { id: "pq-09", text: "I don't know which {{category}} to choose — can you help me decide?", enabled: true },
+  { id: "pq-10", text: "What should I look for when buying a {{category}}, and which brands are best?", enabled: true },
 ];
 
 export const DEFAULT_PROBE_ENGINES: ProbeEngine[] = [
