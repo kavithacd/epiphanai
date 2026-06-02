@@ -5,7 +5,7 @@ import { useEpiphan } from "@/lib/epiphan-store";
 import { PillarRing, PillarBadge, SeverityBadge } from "@/components/PillarRing";
 import { DiffPane } from "@/components/DiffPane";
 import { PILLARS, describeFix, Failure } from "@/lib/epiphan-data";
-import { FixStatusPill } from "./dashboard";
+import { FixStatusPill } from "@/components/StatusPills";
 import { FileDown, Trash2, ChevronRight, Wand2, FileText, FileJson } from "lucide-react";
 import { toCsv, toJson, downloadFile } from "@/lib/epiphan-export";
 import { toast } from "sonner";
