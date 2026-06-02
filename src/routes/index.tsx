@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
-import { ArrowRight, ShieldCheck, Cpu, Lock, Sparkles, Activity, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowRight, ShieldCheck, Cpu, Lock, Sparkles, Activity, CheckCircle2, XCircle, Mic } from "lucide-react";
 import { useState } from "react";
 
 export const Route = createFileRoute("/")({
@@ -80,6 +80,9 @@ function Hero() {
             <Link to="/start" className="px-5 py-2.5 rounded bg-primary text-primary-foreground hover:opacity-90 inline-flex items-center gap-2 text-sm font-medium">
               Run a live audit <ArrowRight className="w-4 h-4" />
             </Link>
+            <Link to="/settings" hash="brand-monitoring" className="px-5 py-2.5 rounded border border-primary/40 bg-primary/8 text-primary hover:bg-primary/15 inline-flex items-center gap-2 text-sm font-medium transition">
+              <Mic className="w-4 h-4" /> Setup brand monitoring
+            </Link>
             <Link to="/admin" className="px-5 py-2.5 rounded border border-border hover:bg-accent/30 text-sm">
               Admin cockpit
             </Link>
@@ -121,9 +124,7 @@ function Pillars() {
             <h2 className="text-3xl font-sans font-medium leading-tight">The five pillars that decide whether AI cites you.</h2>
           </div>
           <p className="md:col-span-2 text-muted-foreground leading-relaxed text-base">
-            Every Shopify store is scanned against a deterministic 5-pillar taxonomy. Each failure
-            is classified, scored, and routed to the correct sovereign model for remediation —
-            with the Eval Gate blocking any output that fails Fact Preservation.
+            Each failure is classified, scored, and routed to the correct remediation.
           </p>
         </div>
         <div className="grid md:grid-cols-5 gap-px bg-border border border-border">

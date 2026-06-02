@@ -1,10 +1,11 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { Activity, Inbox, History, Shield, Settings as Cog, Cpu, Sparkles, Plus, TrendingUp } from "lucide-react";
+import { Activity, Inbox, History, Shield, Settings as Cog, Sparkles, Plus, TrendingUp, Radio } from "lucide-react";
 import { useEpiphan } from "@/lib/epiphan-store";
 
 const NAV = [
   { to: "/dashboard", label: "Audit Engine", icon: Activity },
   { to: "/review", label: "Review Queue", icon: Inbox },
+  { to: "/monitoring", label: "Brand Monitoring", icon: Radio },
   { to: "/impact", label: "Fix Impact", icon: TrendingUp },
   { to: "/history", label: "Audit History", icon: History },
   { to: "/admin", label: "Admin Cockpit", icon: Shield },
@@ -56,41 +57,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-        <div className="p-3 border-t border-border space-y-2">
-          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-            <span className="w-1.5 h-1.5 rounded-full bg-sev-low animate-pulse" />
-            <span>Local Ollama · 11434</span>
-          </div>
-          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-            <Cpu className="w-3 h-3" /> Phi-4 · Llama 3.3 · Vision
-          </div>
-          <div className="text-[9px] text-muted-foreground/70 leading-tight pt-1 border-t border-border/50">
-            Zero-data-leakage · GDPR / EU AI Act
-          </div>
-        </div>
       </aside>
       <main className="flex-1 min-w-0 overflow-x-hidden flex flex-col">
         <header className="h-12 border-b border-border bg-surface/60 backdrop-blur flex items-center justify-between px-6 shrink-0">
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
             {NAV.find((n) => loc.pathname.startsWith(n.to))?.label ?? "epiphanAI"}
           </div>
-          <button
-            onClick={() => {
-              navigate({ to: "/dashboard" });
-              setTimeout(() => {
-                window.scrollTo({ top: 0, behavior: "smooth" });
-                document.getElementById("epiphan-audit-url")?.focus();
-              }, 80);
-            }}
-            className="px-3 py-1.5 rounded bg-primary text-primary-foreground hover:opacity-90 text-[11px] flex items-center gap-1.5 font-medium"
-          >
-            <Plus className="w-3 h-3" /> New audit
-          </button>
-
+          {!loc.pathname.startsWith("/monitoring") && (
+            <button
+              onClick={() => {
+                navigate({ to: "/dashboard" });
+                setTimeout(() => {
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                  document.getElementById("epiphan-audit-url")?.focus();
+                }, 80);
+              }}
+              className="px-3 py-1.5 rounded bg-primary text-primary-foreground hover:opacity-90 text-[11px] flex items-center gap-1.5 font-medium"
+            >
+              <Plus className="w-3 h-3" /> New audit
+            </button>
+          )}
         </header>
         <div className="flex-1 min-w-0">{children}</div>
       </main>
     </div>
   );
 }
-
