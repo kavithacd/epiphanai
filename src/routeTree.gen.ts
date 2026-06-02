@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as StartRouteImport } from './routes/start'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ReviewRouteImport } from './routes/review'
+import { Route as MonitoringRouteImport } from './routes/monitoring'
 import { Route as ImpactRouteImport } from './routes/impact'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -31,6 +32,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const ReviewRoute = ReviewRouteImport.update({
   id: '/review',
   path: '/review',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MonitoringRoute = MonitoringRouteImport.update({
+  id: '/monitoring',
+  path: '/monitoring',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ImpactRoute = ImpactRouteImport.update({
@@ -65,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/history': typeof HistoryRoute
   '/impact': typeof ImpactRoute
+  '/monitoring': typeof MonitoringRoute
   '/review': typeof ReviewRoute
   '/settings': typeof SettingsRoute
   '/start': typeof StartRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/history': typeof HistoryRoute
   '/impact': typeof ImpactRoute
+  '/monitoring': typeof MonitoringRoute
   '/review': typeof ReviewRoute
   '/settings': typeof SettingsRoute
   '/start': typeof StartRoute
@@ -86,6 +94,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/history': typeof HistoryRoute
   '/impact': typeof ImpactRoute
+  '/monitoring': typeof MonitoringRoute
   '/review': typeof ReviewRoute
   '/settings': typeof SettingsRoute
   '/start': typeof StartRoute
@@ -98,6 +107,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/history'
     | '/impact'
+    | '/monitoring'
     | '/review'
     | '/settings'
     | '/start'
@@ -108,6 +118,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/history'
     | '/impact'
+    | '/monitoring'
     | '/review'
     | '/settings'
     | '/start'
@@ -118,6 +129,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/history'
     | '/impact'
+    | '/monitoring'
     | '/review'
     | '/settings'
     | '/start'
@@ -129,6 +141,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   HistoryRoute: typeof HistoryRoute
   ImpactRoute: typeof ImpactRoute
+  MonitoringRoute: typeof MonitoringRoute
   ReviewRoute: typeof ReviewRoute
   SettingsRoute: typeof SettingsRoute
   StartRoute: typeof StartRoute
@@ -155,6 +168,13 @@ declare module '@tanstack/react-router' {
       path: '/review'
       fullPath: '/review'
       preLoaderRoute: typeof ReviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/monitoring': {
+      id: '/monitoring'
+      path: '/monitoring'
+      fullPath: '/monitoring'
+      preLoaderRoute: typeof MonitoringRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/impact': {
@@ -201,6 +221,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   HistoryRoute: HistoryRoute,
   ImpactRoute: ImpactRoute,
+  MonitoringRoute: MonitoringRoute,
   ReviewRoute: ReviewRoute,
   SettingsRoute: SettingsRoute,
   StartRoute: StartRoute,
