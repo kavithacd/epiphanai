@@ -702,6 +702,7 @@ function StorePreview({ audit }: { audit: ReturnType<typeof useEpiphan.getState>
   const healed = (id: string) => audit.failures.some((f) => f.failureId === id && f.status === "deployed");
   const detected = (id: string) => audit.failures.some((f) => f.failureId === id);
   const ctx = audit.ctx;
+  if (!ctx) return null;
 
   const currencySymbol = ctx.currency === "EUR" ? "€" : ctx.currency === "GBP" ? "£" : ctx.currency === "USD" ? "$" : `${ctx.currency} `;
   const wordCount = healed("F3.1") ? 412 : 32;
