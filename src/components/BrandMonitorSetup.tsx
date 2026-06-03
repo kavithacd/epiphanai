@@ -1,4 +1,4 @@
-import { Link, useBlocker } from "@tanstack/react-router";
+import { useBlocker } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { CheckCircle2, Plus, Radio, Save, X } from "lucide-react";
 import { useEpiphan } from "@/lib/epiphan-store";
@@ -167,14 +167,11 @@ export function BrandMonitorSetup() {
       <div className="pt-2 border-t border-border flex items-center justify-between flex-wrap gap-3">
         <div className="text-[11px] text-muted-foreground">
           Active probe queries:{" "}
-          <Link
-            to="/settings"
-            hash="probe-configuration"
-            className="text-primary underline underline-offset-2 hover:opacity-80"
-          >
+          <span className="text-foreground">
             {probeQueries.filter((q) => q.enabled).length} queries ·{" "}
             {probeEngines.filter((e) => e.enabled).length} engines
-          </Link>
+          </span>
+          <span className="text-muted-foreground/60"> — edit in the Probes tab</span>
         </div>
         <div className="flex items-center gap-2">
           {isBrandDirty && (
