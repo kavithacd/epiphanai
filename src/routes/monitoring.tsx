@@ -505,6 +505,8 @@ function BrandMonitoring() {
     <AppShell>
       <div className="max-w-[1400px] mx-auto p-8 space-y-6">
 
+        {TabBar}
+
         {/* Header */}
         <header className="flex items-end justify-between flex-wrap gap-4">
           <div>
@@ -515,16 +517,16 @@ function BrandMonitoring() {
               <span className="text-foreground">{brand}</span>.
             </p>
             {brandMonitorConfig.configured && brandMonitorConfig.brandName && (
-              <Link
-                to="/settings"
-                hash="brand-monitoring"
+              <button
+                onClick={() => setTab("setup")}
                 className="inline-flex items-center gap-1.5 mt-2 px-2 py-0.5 rounded-full border border-primary/30 bg-primary/8 text-primary text-[10px] hover:bg-primary/15 transition-colors"
               >
                 <Radio className="w-2.5 h-2.5" />
                 Monitoring: {brandMonitorConfig.brandName}
-              </Link>
+              </button>
             )}
           </div>
+
 
           <div className="flex items-center gap-2">
             {audits.length > 1 && (
