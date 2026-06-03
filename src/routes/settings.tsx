@@ -1,9 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { useEpiphan, EVAL_THRESHOLD_META } from "@/lib/epiphan-store";
-import { resolveProbeQuery, ProductContext } from "@/lib/epiphan-data";
 import { useState } from "react";
-import { Save, Webhook, Slack as SlackIcon, ShoppingBag, Globe, Database, Layers, Zap, ShieldCheck, Radio, Trash2, Plus, CloudCheck } from "lucide-react";
+import { Save, Webhook, Slack as SlackIcon, ShoppingBag, Globe, Database, Layers, Zap, ShieldCheck } from "lucide-react";
 import { IntegrationConfig } from "@/lib/epiphan-export";
 
 export const Route = createFileRoute("/settings")({
@@ -18,32 +17,13 @@ function Settings() {
   const setAutoDeployEnabled = useEpiphan((s) => s.setAutoDeployEnabled);
   const evalThresholds = useEpiphan((s) => s.evalThresholds);
   const setEvalThreshold = useEpiphan((s) => s.setEvalThreshold);
-  const probeQueries = useEpiphan((s) => s.probeQueries);
-  const probeEngines = useEpiphan((s) => s.probeEngines);
-  const addProbeQuery = useEpiphan((s) => s.addProbeQuery);
-  const deleteProbeQuery = useEpiphan((s) => s.deleteProbeQuery);
-  const updateProbeQuery = useEpiphan((s) => s.updateProbeQuery);
-  const toggleProbeQuery = useEpiphan((s) => s.toggleProbeQuery);
-  const toggleProbeEngine = useEpiphan((s) => s.toggleProbeEngine);
-  const audits = useEpiphan((s) => s.audits);
-  const previewCtx: ProductContext | null = audits[0]?.ctx ?? null;
   const [ollamaUrl, setOllamaUrl] = useState("http://localhost:11434");
   const [n8nUrl, setN8nUrl] = useState("https://n8n.tessera.internal/webhook/audit/start");
   const [saved, setSaved] = useState(false);
-  const [newQueryText, setNewQueryText] = useState("");
-  const [probeSaved, setProbeSaved] = useState(false);
-
-  function flashProbeSaved() {
-    setProbeSaved(true);
-    setTimeout(() => setProbeSaved(false), 2000);
-  }
-
 
   const upd = <K extends keyof IntegrationConfig>(k: K) =>
     (v: IntegrationConfig[K]) => setIntegration(k, v);
 
-  const activeEngineCount = probeEngines.filter((e) => e.enabled).length;
-  const enabledQueryCount = probeQueries.filter((q) => q.enabled).length;
 
   return (
     <AppShell>
