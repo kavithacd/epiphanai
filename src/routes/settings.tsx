@@ -1,9 +1,9 @@
-import { createFileRoute, Link, useBlocker } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { useEpiphan, EVAL_THRESHOLD_META } from "@/lib/epiphan-store";
 import { resolveProbeQuery, ProductContext } from "@/lib/epiphan-data";
-import { useState, useEffect } from "react";
-import { Save, Webhook, Slack as SlackIcon, ShoppingBag, Globe, Database, Layers, Zap, ShieldCheck, Radio, Trash2, Plus, X, CheckCircle2, CloudCheck } from "lucide-react";
+import { useState } from "react";
+import { Save, Webhook, Slack as SlackIcon, ShoppingBag, Globe, Database, Layers, Zap, ShieldCheck, Radio, Trash2, Plus, CloudCheck } from "lucide-react";
 import { IntegrationConfig } from "@/lib/epiphan-export";
 
 export const Route = createFileRoute("/settings")({
