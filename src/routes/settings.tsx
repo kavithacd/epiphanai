@@ -26,50 +26,18 @@ function Settings() {
   const toggleProbeQuery = useEpiphan((s) => s.toggleProbeQuery);
   const toggleProbeEngine = useEpiphan((s) => s.toggleProbeEngine);
   const audits = useEpiphan((s) => s.audits);
-  const brandMonitorConfig = useEpiphan((s) => s.brandMonitorConfig);
-  const setBrandMonitorConfig = useEpiphan((s) => s.setBrandMonitorConfig);
   const previewCtx: ProductContext | null = audits[0]?.ctx ?? null;
   const [ollamaUrl, setOllamaUrl] = useState("http://localhost:11434");
   const [n8nUrl, setN8nUrl] = useState("https://n8n.tessera.internal/webhook/audit/start");
   const [saved, setSaved] = useState(false);
   const [newQueryText, setNewQueryText] = useState("");
-  const [brandInput, setBrandInput] = useState(brandMonitorConfig.brandName || brandMonitorConfig.productUrl);
-  const [competitorInput, setCompetitorInput] = useState("");
-  const [localCompetitors, setLocalCompetitors] = useState<string[]>(brandMonitorConfig.competitors);
-  const [brandSaved, setBrandSaved] = useState(false);
   const [probeSaved, setProbeSaved] = useState(false);
-
-  useEffect(() => {
-    setBrandInput(brandMonitorConfig.brandName || brandMonitorConfig.productUrl);
-    setLocalCompetitors(brandMonitorConfig.competitors);
-  }, [brandMonitorConfig]);
 
   function flashProbeSaved() {
     setProbeSaved(true);
     setTimeout(() => setProbeSaved(false), 2000);
   }
 
-  const savedBrandInput = brandMonitorConfig.brandName || brandMonitorConfig.productUrl;
-  const isBrandDirty =
-    brandInput !== savedBrandInput ||
-    localCompetitors.length !== brandMonitorConfig.competitors.length ||
-    localCompetitors.some((c, i) => c !== brandMonitorConfig.competitors[i]);
-
-  useBlocker({
-    condition: isBrandDirty,
-    blockerFn: () =>
-      Promise.resolve(
-        window.confirm(
-          "You have unsaved Brand Monitoring changes. Leave this page and discard them?"
-        )
-      ),
-  });
-
-  function resetBrandForm() {
-    setBrandInput(savedBrandInput);
-    setLocalCompetitors(brandMonitorConfig.competitors);
-    setCompetitorInput("");
-  }
 
   const upd = <K extends keyof IntegrationConfig>(k: K) =>
     (v: IntegrationConfig[K]) => setIntegration(k, v);
