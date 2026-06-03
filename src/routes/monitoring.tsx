@@ -279,28 +279,74 @@ function BrandMonitoring() {
   const [exportSections, setExportSections] = useState<ExportSections>({ sov: true, sentiment: true, competitors: true, queries: true });
   const [copyToast, setCopyToast] = useState(false);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [tab, setTab] = useState<"dashboard" | "setup">(
+    brandMonitorConfig.configured ? "dashboard" : "setup",
+  );
+
+  const TabBar = (
+    <div className="flex items-center gap-1 border-b border-border -mx-1 px-1">
+      <button
+        onClick={() => setTab("dashboard")}
+        className={`px-3 py-2 text-[11px] uppercase tracking-widest border-b-2 -mb-px transition-colors ${
+          tab === "dashboard"
+            ? "border-primary text-foreground"
+            : "border-transparent text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        <span className="inline-flex items-center gap-1.5"><Radio className="w-3 h-3" /> Dashboard</span>
+      </button>
+      <button
+        onClick={() => setTab("setup")}
+        className={`px-3 py-2 text-[11px] uppercase tracking-widest border-b-2 -mb-px transition-colors ${
+          tab === "setup"
+            ? "border-primary text-foreground"
+            : "border-transparent text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        <span className="inline-flex items-center gap-1.5"><SettingsIcon className="w-3 h-3" /> Setup</span>
+      </button>
+    </div>
+  );
+
+  const PageHeader = (
+    <header>
+      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Brand Intelligence</div>
+      <h1 className="text-2xl font-sans font-medium mt-1">Brand Monitoring</h1>
+    </header>
+  );
+
+  // Setup tab — always available
+  if (tab === "setup") {
+    return (
+      <AppShell>
+        <div className="max-w-3xl mx-auto p-8 space-y-6">
+          {PageHeader}
+          {TabBar}
+          <BrandMonitorSetup />
+        </div>
+      </AppShell>
+    );
+  }
 
   // Gate: setup not complete
   if (!brandMonitorConfig.configured) {
     return (
       <AppShell>
         <div className="max-w-[1400px] mx-auto p-8 space-y-6">
-          <header>
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Brand Intelligence</div>
-            <h1 className="text-2xl font-sans font-medium mt-1">Brand Monitoring</h1>
-          </header>
+          {PageHeader}
+          {TabBar}
           <div className="border border-border rounded-lg bg-surface p-16 text-center space-y-4">
             <Radio className="w-8 h-8 text-muted-foreground mx-auto" />
             <p className="text-foreground text-sm font-medium">Set up brand monitoring to see your dashboard</p>
             <p className="text-muted-foreground text-xs max-w-sm mx-auto">
-              Define your brand and competitors in Settings to activate Share of Voice tracking, sentiment analysis, and competitor citations.
+              Define your brand and competitors in the Setup tab to activate Share of Voice tracking, sentiment analysis, and competitor citations.
             </p>
-            <a
-              href="/settings#brand-monitoring"
+            <button
+              onClick={() => setTab("setup")}
               className="inline-flex items-center gap-2 px-4 py-2 rounded bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity"
             >
               Go to Brand Monitoring Setup
-            </a>
+            </button>
           </div>
         </div>
       </AppShell>
@@ -312,10 +358,8 @@ function BrandMonitoring() {
     return (
       <AppShell>
         <div className="max-w-[1400px] mx-auto p-8 space-y-6">
-          <header>
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Brand Intelligence</div>
-            <h1 className="text-2xl font-sans font-medium mt-1">Brand Monitoring</h1>
-          </header>
+          {PageHeader}
+          {TabBar}
           <div className="border border-border rounded-lg bg-surface p-16 text-center space-y-3">
             <Radio className="w-8 h-8 text-muted-foreground mx-auto" />
             <p className="text-muted-foreground text-xs">
@@ -326,6 +370,7 @@ function BrandMonitoring() {
       </AppShell>
     );
   }
+
 
   const audit = selectedId ? (audits.find((a) => a.id === selectedId) ?? audits[0]) : audits[0];
   const enabledEngines = probeEngines.filter((e) => e.enabled);
