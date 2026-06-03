@@ -280,7 +280,7 @@ function BrandMonitoring() {
   const [exportSections, setExportSections] = useState<ExportSections>({ sov: true, sentiment: true, competitors: true, queries: true });
   const [copyToast, setCopyToast] = useState(false);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
-  const [tab, setTab] = useState<"dashboard" | "setup">(
+  const [tab, setTab] = useState<"dashboard" | "setup" | "probes">(
     brandMonitorConfig.configured ? "dashboard" : "setup",
   );
 
@@ -306,6 +306,16 @@ function BrandMonitoring() {
       >
         <span className="inline-flex items-center gap-1.5"><SettingsIcon className="w-3 h-3" /> Setup</span>
       </button>
+      <button
+        onClick={() => setTab("probes")}
+        className={`px-3 py-2 text-[11px] uppercase tracking-widest border-b-2 -mb-px transition-colors ${
+          tab === "probes"
+            ? "border-primary text-foreground"
+            : "border-transparent text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        <span className="inline-flex items-center gap-1.5"><SlidersHorizontal className="w-3 h-3" /> Probes</span>
+      </button>
     </div>
   );
 
@@ -328,6 +338,20 @@ function BrandMonitoring() {
       </AppShell>
     );
   }
+
+  // Probes tab — always available
+  if (tab === "probes") {
+    return (
+      <AppShell>
+        <div className="max-w-3xl mx-auto p-8 space-y-6">
+          {PageHeader}
+          {TabBar}
+          <ProbeConfiguration />
+        </div>
+      </AppShell>
+    );
+  }
+
 
   // Gate: setup not complete
   if (!brandMonitorConfig.configured) {
