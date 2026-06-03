@@ -2,9 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { BrandMonitorSetup } from "@/components/BrandMonitorSetup";
+import { ProbeConfiguration } from "@/components/ProbeConfiguration";
 import { useEpiphan } from "@/lib/epiphan-store";
 import { mulberry32, hashStr, seededInt, resolveProbeQuery } from "@/lib/epiphan-data";
-import { Radio, ChevronDown, ChevronRight, ExternalLink, Download, X, Copy, Check, Settings as SettingsIcon } from "lucide-react";
+import { Radio, ChevronDown, ChevronRight, ExternalLink, Download, X, Copy, Check, Settings as SettingsIcon, SlidersHorizontal } from "lucide-react";
 
 export const Route = createFileRoute("/monitoring")({
   head: () => ({ meta: [{ title: "Brand Monitoring · epiphanAI" }] }),
