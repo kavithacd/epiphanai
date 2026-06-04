@@ -136,11 +136,34 @@ export type EvalThresholds = {
   objectAccuracy: number;
 };
 
+export type ProbeIntent =
+  | "awareness"
+  | "discovery"
+  | "comparison"
+  | "reviews"
+  | "price"
+  | "transactional";
+
 export type ProbeQuery = {
   id: string;
   text: string;
   enabled: boolean;
+  intent: ProbeIntent;
 };
+
+export const PROBE_INTENT_META: {
+  id: ProbeIntent;
+  label: string;
+  bucket: "Informational" | "Navigational" | "Commercial" | "Transactional";
+  description: string;
+}[] = [
+  { id: "awareness",     label: "Awareness",          bucket: "Informational",  description: "Does the AI know the brand exists at all?" },
+  { id: "discovery",     label: "Discovery",          bucket: "Informational",  description: "Category-level questions where the brand should surface." },
+  { id: "comparison",    label: "Comparison",         bucket: "Commercial",     description: "Head-to-head queries against competitors." },
+  { id: "reviews",       label: "Reviews & Trust",    bucket: "Commercial",     description: "Reputation, sentiment, and credibility probes." },
+  { id: "price",         label: "Price & Value",      bucket: "Commercial",     description: "Affordability and value-for-money positioning." },
+  { id: "transactional", label: "Buying intent",      bucket: "Transactional",  description: "Ready-to-purchase queries: where and how to buy." },
+];
 
 export type ProbeEngine = {
   id: string;
