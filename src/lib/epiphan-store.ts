@@ -818,6 +818,19 @@ export const useEpiphan = create<State>()(persist((set, get) => ({
 
 }), {
   name: "epiphan-state-v1",
+  version: 2,
+  migrate: (persisted: any, version) => {
+    if (!persisted) return persisted;
+    if (version < 2) {
+      // v2: ProbeQuery gained an `intent` field; reset to new defaults so
+      // legacy probe lists pick up the intent-grouped library.
+      persisted.probeQueries = DEFAULT_PROBE_QUERIES;
+      if (persisted.brandMonitorConfig && persisted.brandMonitorConfig.lastRefreshAt === undefined) {
+        persisted.brandMonitorConfig.lastRefreshAt = null;
+      }
+    }
+    return persisted;
+  },
   partialize: (state) => ({
     audits: state.audits
       .filter((a) => a.status !== "running")
