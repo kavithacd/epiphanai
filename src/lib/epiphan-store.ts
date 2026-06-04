@@ -311,6 +311,7 @@ export const useEpiphan = create<State>()(persist((set, get) => ({
     brandName: "",
     productUrl: "",
     competitors: [],
+    lastRefreshAt: null,
   },
 
   getAudit: (id) => get().audits.find((a) => a.id === id),
