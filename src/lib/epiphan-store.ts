@@ -268,7 +268,7 @@ interface State {
   setIntegration: <K extends keyof IntegrationConfig>(key: K, value: IntegrationConfig[K]) => void;
   setAutoDeployEnabled: (enabled: boolean) => void;
   setEvalThreshold: (key: keyof EvalThresholds, value: number) => void;
-  addProbeQuery: (text: string) => void;
+  addProbeQuery: (text: string, intent?: ProbeIntent) => void;
   deleteProbeQuery: (id: string) => void;
   updateProbeQuery: (id: string, text: string) => void;
   toggleProbeQuery: (id: string) => void;
