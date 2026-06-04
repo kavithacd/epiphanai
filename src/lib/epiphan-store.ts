@@ -363,9 +363,23 @@ export const useEpiphan = create<State>()(persist((set, get) => ({
   },
 
   setBrandMonitorConfig: (config) => {
-    set((s): Partial<State> => ({
-      brandMonitorConfig: { ...s.brandMonitorConfig, ...config },
-    }));
+    set((s): Partial<State> => {
+      const merged = { ...s.brandMonitorConfig, ...config };
+      // Stamp the first refresh when the user activates monitoring.
+      if (merged.configured && !merged.lastRefreshAt) {
+        merged.lastRefreshAt = Date.now();
+      }
+      return { brandMonitorConfig: merged };
+    });
+  },
+
+  refreshBrandMonitor: () => {
+    set((s): Partial<State> => {
+      if (!s.brandMonitorConfig.configured) return {};
+      return {
+        brandMonitorConfig: { ...s.brandMonitorConfig, lastRefreshAt: Date.now() },
+      };
+    });
   },
 
   notifySlackCritical: (failureRecordId) => {
