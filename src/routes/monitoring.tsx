@@ -576,13 +576,29 @@ function BrandMonitoring() {
               <span className="text-foreground">{brand}</span>.
             </p>
             {brandMonitorConfig.configured && brandMonitorConfig.brandName && (
-              <button
-                onClick={() => setTab("setup")}
-                className="inline-flex items-center gap-1.5 mt-2 px-2 py-0.5 rounded-full border border-primary/30 bg-primary/8 text-primary text-[10px] hover:bg-primary/15 transition-colors"
-              >
-                <Radio className="w-2.5 h-2.5" />
-                Monitoring: {brandMonitorConfig.brandName}
-              </button>
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <button
+                  onClick={() => setTab("setup")}
+                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-primary/30 bg-primary/8 text-primary text-[10px] hover:bg-primary/15 transition-colors"
+                >
+                  <Radio className="w-2.5 h-2.5" />
+                  Monitoring: {brandMonitorConfig.brandName}
+                </button>
+                <span
+                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-border bg-background text-[10px] text-muted-foreground"
+                  title={`Last refreshed: ${
+                    lastRefreshAt ? new Date(lastRefreshAt).toLocaleString() : "—"
+                  }`}
+                >
+                  <RefreshCw className="w-2.5 h-2.5" />
+                  Auto-refresh: Mondays 8:00 PM · next{" "}
+                  {nextRefreshAt.toLocaleDateString(undefined, {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </span>
+              </div>
             )}
           </div>
 
