@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { BrandMonitorSetup } from "@/components/BrandMonitorSetup";
 import { ProbeConfiguration } from "@/components/ProbeConfiguration";
 import { useEpiphan } from "@/lib/epiphan-store";
+import { nextBrandMonitorRefresh } from "@/lib/epiphan-store";
 import { mulberry32, hashStr, seededInt, resolveProbeQuery } from "@/lib/epiphan-data";
-import { Radio, ChevronDown, ChevronRight, ExternalLink, Download, X, Copy, Check, Settings as SettingsIcon, SlidersHorizontal } from "lucide-react";
+import { Radio, ChevronDown, ChevronRight, ExternalLink, Download, X, Copy, Check, Settings as SettingsIcon, SlidersHorizontal, RefreshCw } from "lucide-react";
 
 export const Route = createFileRoute("/monitoring")({
   head: () => ({ meta: [{ title: "Brand Monitoring · epiphanAI" }] }),
@@ -274,6 +275,7 @@ function BrandMonitoring() {
   const probeEngines = useEpiphan((s) => s.probeEngines);
   const probeQueries = useEpiphan((s) => s.probeQueries);
   const brandMonitorConfig = useEpiphan((s) => s.brandMonitorConfig);
+  const refreshBrandMonitor = useEpiphan((s) => s.refreshBrandMonitor);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
@@ -282,6 +284,38 @@ function BrandMonitoring() {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [tab, setTab] = useState<"dashboard" | "setup" | "probes">(
     brandMonitorConfig.configured ? "dashboard" : "setup",
+  );
+
+  // Auto-refresh every Monday at 8:00 PM (local time) while monitoring is active.
+  // Runs immediately on load if the scheduled refresh was missed (e.g. tab closed).
+  const lastRefreshAt = brandMonitorConfig.lastRefreshAt;
+  const monitoringActive = brandMonitorConfig.configured;
+  useEffect(() => {
+    if (!monitoringActive) return;
+    const tick = () => {
+      const baseline = lastRefreshAt ?? Date.now();
+      const due = nextBrandMonitorRefresh(new Date(baseline)).getTime();
+      const delay = due - Date.now();
+      if (delay <= 0) {
+        refreshBrandMonitor();
+      }
+      return delay;
+    };
+    let delay = tick();
+    // Cap setTimeout at ~24 days to avoid 32-bit overflow; re-arm if longer.
+    const MAX_DELAY = 2_000_000_000;
+    const timeoutId = window.setTimeout(
+      function fire() {
+        refreshBrandMonitor();
+      },
+      Math.min(Math.max(delay, 0), MAX_DELAY),
+    );
+    return () => window.clearTimeout(timeoutId);
+  }, [monitoringActive, lastRefreshAt, refreshBrandMonitor]);
+
+  const nextRefreshAt = useMemo(
+    () => nextBrandMonitorRefresh(new Date(lastRefreshAt ?? Date.now())),
+    [lastRefreshAt],
   );
 
   const TabBar = (
@@ -542,13 +576,29 @@ function BrandMonitoring() {
               <span className="text-foreground">{brand}</span>.
             </p>
             {brandMonitorConfig.configured && brandMonitorConfig.brandName && (
-              <button
-                onClick={() => setTab("setup")}
-                className="inline-flex items-center gap-1.5 mt-2 px-2 py-0.5 rounded-full border border-primary/30 bg-primary/8 text-primary text-[10px] hover:bg-primary/15 transition-colors"
-              >
-                <Radio className="w-2.5 h-2.5" />
-                Monitoring: {brandMonitorConfig.brandName}
-              </button>
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <button
+                  onClick={() => setTab("setup")}
+                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-primary/30 bg-primary/8 text-primary text-[10px] hover:bg-primary/15 transition-colors"
+                >
+                  <Radio className="w-2.5 h-2.5" />
+                  Monitoring: {brandMonitorConfig.brandName}
+                </button>
+                <span
+                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-border bg-background text-[10px] text-muted-foreground"
+                  title={`Last refreshed: ${
+                    lastRefreshAt ? new Date(lastRefreshAt).toLocaleString() : "—"
+                  }`}
+                >
+                  <RefreshCw className="w-2.5 h-2.5" />
+                  Auto-refresh: Mondays 8:00 PM · next{" "}
+                  {nextRefreshAt.toLocaleDateString(undefined, {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </span>
+              </div>
             )}
           </div>
 

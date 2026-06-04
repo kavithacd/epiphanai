@@ -153,7 +153,25 @@ export type BrandMonitorConfig = {
   brandName: string;
   productUrl: string;
   competitors: string[];
+  lastRefreshAt: number | null;
 };
+
+// Brand monitor auto-refresh cadence: every Monday at 20:00 (8 PM) local time.
+export const BRAND_MONITOR_REFRESH_DOW = 1; // Monday
+export const BRAND_MONITOR_REFRESH_HOUR = 20; // 8 PM
+
+export function nextBrandMonitorRefresh(from: Date = new Date()): Date {
+  const next = new Date(from);
+  next.setSeconds(0, 0);
+  next.setMinutes(0);
+  next.setHours(BRAND_MONITOR_REFRESH_HOUR);
+  const dayDiff = (BRAND_MONITOR_REFRESH_DOW - next.getDay() + 7) % 7;
+  next.setDate(next.getDate() + dayDiff);
+  if (next.getTime() <= from.getTime()) {
+    next.setDate(next.getDate() + 7);
+  }
+  return next;
+}
 
 export const DEFAULT_PROBE_QUERIES: ProbeQuery[] = [
   { id: "pq-01", text: "Is {{brand}} recommended by AI assistants for {{category}} in Europe?", enabled: true },
@@ -219,6 +237,7 @@ interface State {
   toggleProbeQuery: (id: string) => void;
   toggleProbeEngine: (id: string) => void;
   setBrandMonitorConfig: (config: Partial<BrandMonitorConfig>) => void;
+  refreshBrandMonitor: () => void;
   pushToPlatform: (failureIds: string[], platform: PlatformId) => void;
   notifySlackCritical: (failureRecordId: string) => void;
 }
@@ -293,6 +312,7 @@ export const useEpiphan = create<State>()(persist((set, get) => ({
     brandName: "",
     productUrl: "",
     competitors: [],
+    lastRefreshAt: null,
   },
 
   getAudit: (id) => get().audits.find((a) => a.id === id),
@@ -343,9 +363,23 @@ export const useEpiphan = create<State>()(persist((set, get) => ({
   },
 
   setBrandMonitorConfig: (config) => {
-    set((s): Partial<State> => ({
-      brandMonitorConfig: { ...s.brandMonitorConfig, ...config },
-    }));
+    set((s): Partial<State> => {
+      const merged = { ...s.brandMonitorConfig, ...config };
+      // Stamp the first refresh when the user activates monitoring.
+      if (merged.configured && !merged.lastRefreshAt) {
+        merged.lastRefreshAt = Date.now();
+      }
+      return { brandMonitorConfig: merged };
+    });
+  },
+
+  refreshBrandMonitor: () => {
+    set((s): Partial<State> => {
+      if (!s.brandMonitorConfig.configured) return {};
+      return {
+        brandMonitorConfig: { ...s.brandMonitorConfig, lastRefreshAt: Date.now() },
+      };
+    });
   },
 
   notifySlackCritical: (failureRecordId) => {
