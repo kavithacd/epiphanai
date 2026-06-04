@@ -197,16 +197,30 @@ export function nextBrandMonitorRefresh(from: Date = new Date()): Date {
 }
 
 export const DEFAULT_PROBE_QUERIES: ProbeQuery[] = [
-  { id: "pq-01", text: "Is {{brand}} recommended by AI assistants for {{category}} in Europe?", enabled: true },
-  { id: "pq-02", text: "Best {{category}} brands recommended by ChatGPT and Gemini in 2025", enabled: true },
-  { id: "pq-03", text: "Which {{industry}} brand is most cited by AI for quality and value?", enabled: true },
-  { id: "pq-04", text: "Top AI-recommended {{category}} options in the EU market right now", enabled: true },
-  { id: "pq-05", text: "Compare leading {{industry}} brands recommended by AI assistants", enabled: true },
-  { id: "pq-06", text: "Does {{brand}} appear when AI engines answer {{category}} shopping questions?", enabled: true },
-  { id: "pq-07", text: "Best {{category}} gift recommendations for {{productName}} fans according to AI", enabled: true },
-  { id: "pq-08", text: "What {{industry}} brands do AI models reference most for everyday use?", enabled: true },
-  { id: "pq-09", text: "Best {{category}} under €200 in Europe — what does AI recommend?", enabled: true },
-  { id: "pq-10", text: "Where does {{brand}} rank in AI-generated {{category}} buying guides?", enabled: true },
+  // Informational — Awareness
+  { id: "pq-01", text: "What is {{brand}} known for?", enabled: true, intent: "awareness" },
+  { id: "pq-02", text: "Who makes {{brand}} and where are they based?", enabled: true, intent: "awareness" },
+
+  // Informational — Discovery
+  { id: "pq-03", text: "What are the best {{category}} brands in Europe right now?", enabled: true, intent: "discovery" },
+  { id: "pq-04", text: "Recommend a {{category}} for everyday use.", enabled: true, intent: "discovery" },
+  { id: "pq-05", text: "Which {{industry}} brands are trending in 2025?", enabled: true, intent: "discovery" },
+
+  // Commercial — Comparison
+  { id: "pq-06", text: "How does {{brand}} compare to other leading {{category}} brands?", enabled: true, intent: "comparison" },
+  { id: "pq-07", text: "What are the top alternatives to {{brand}}?", enabled: true, intent: "comparison" },
+
+  // Commercial — Reviews & Trust
+  { id: "pq-08", text: "Is {{brand}} a trustworthy {{category}} brand?", enabled: true, intent: "reviews" },
+  { id: "pq-09", text: "What do customers say about {{brand}}?", enabled: true, intent: "reviews" },
+
+  // Commercial — Price & Value
+  { id: "pq-10", text: "Is {{brand}} worth the price compared to competitors?", enabled: true, intent: "price" },
+  { id: "pq-11", text: "What are the best {{category}} options under €200?", enabled: true, intent: "price" },
+
+  // Transactional — Buying intent
+  { id: "pq-12", text: "Where can I buy {{brand}} {{productName}} online?", enabled: true, intent: "transactional" },
+  { id: "pq-13", text: "Which retailers ship {{brand}} to Europe?", enabled: true, intent: "transactional" },
 ];
 
 export const DEFAULT_PROBE_ENGINES: ProbeEngine[] = [
