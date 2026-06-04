@@ -275,6 +275,7 @@ function BrandMonitoring() {
   const probeEngines = useEpiphan((s) => s.probeEngines);
   const probeQueries = useEpiphan((s) => s.probeQueries);
   const brandMonitorConfig = useEpiphan((s) => s.brandMonitorConfig);
+  const refreshBrandMonitor = useEpiphan((s) => s.refreshBrandMonitor);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
@@ -283,6 +284,38 @@ function BrandMonitoring() {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [tab, setTab] = useState<"dashboard" | "setup" | "probes">(
     brandMonitorConfig.configured ? "dashboard" : "setup",
+  );
+
+  // Auto-refresh every Monday at 8:00 PM (local time) while monitoring is active.
+  // Runs immediately on load if the scheduled refresh was missed (e.g. tab closed).
+  const lastRefreshAt = brandMonitorConfig.lastRefreshAt;
+  const monitoringActive = brandMonitorConfig.configured;
+  useEffect(() => {
+    if (!monitoringActive) return;
+    const tick = () => {
+      const baseline = lastRefreshAt ?? Date.now();
+      const due = nextBrandMonitorRefresh(new Date(baseline)).getTime();
+      const delay = due - Date.now();
+      if (delay <= 0) {
+        refreshBrandMonitor();
+      }
+      return delay;
+    };
+    let delay = tick();
+    // Cap setTimeout at ~24 days to avoid 32-bit overflow; re-arm if longer.
+    const MAX_DELAY = 2_000_000_000;
+    const timeoutId = window.setTimeout(
+      function fire() {
+        refreshBrandMonitor();
+      },
+      Math.min(Math.max(delay, 0), MAX_DELAY),
+    );
+    return () => window.clearTimeout(timeoutId);
+  }, [monitoringActive, lastRefreshAt, refreshBrandMonitor]);
+
+  const nextRefreshAt = useMemo(
+    () => nextBrandMonitorRefresh(new Date(lastRefreshAt ?? Date.now())),
+    [lastRefreshAt],
   );
 
   const TabBar = (
