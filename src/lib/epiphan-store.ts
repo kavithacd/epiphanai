@@ -368,9 +368,9 @@ export const useEpiphan = create<State>()(persist((set, get) => ({
     }));
   },
 
-  addProbeQuery: (text) => {
+  addProbeQuery: (text, intent = "discovery") => {
     set((s): Partial<State> => ({
-      probeQueries: [...s.probeQueries, { id: uid(), text, enabled: true }],
+      probeQueries: [...s.probeQueries, { id: uid(), text, enabled: true, intent }],
     }));
   },
 
