@@ -153,7 +153,25 @@ export type BrandMonitorConfig = {
   brandName: string;
   productUrl: string;
   competitors: string[];
+  lastRefreshAt: number | null;
 };
+
+// Brand monitor auto-refresh cadence: every Monday at 20:00 (8 PM) local time.
+export const BRAND_MONITOR_REFRESH_DOW = 1; // Monday
+export const BRAND_MONITOR_REFRESH_HOUR = 20; // 8 PM
+
+export function nextBrandMonitorRefresh(from: Date = new Date()): Date {
+  const next = new Date(from);
+  next.setSeconds(0, 0);
+  next.setMinutes(0);
+  next.setHours(BRAND_MONITOR_REFRESH_HOUR);
+  const dayDiff = (BRAND_MONITOR_REFRESH_DOW - next.getDay() + 7) % 7;
+  next.setDate(next.getDate() + dayDiff);
+  if (next.getTime() <= from.getTime()) {
+    next.setDate(next.getDate() + 7);
+  }
+  return next;
+}
 
 export const DEFAULT_PROBE_QUERIES: ProbeQuery[] = [
   { id: "pq-01", text: "Is {{brand}} recommended by AI assistants for {{category}} in Europe?", enabled: true },
