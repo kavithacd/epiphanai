@@ -136,11 +136,34 @@ export type EvalThresholds = {
   objectAccuracy: number;
 };
 
+export type ProbeIntent =
+  | "awareness"
+  | "discovery"
+  | "comparison"
+  | "reviews"
+  | "price"
+  | "transactional";
+
 export type ProbeQuery = {
   id: string;
   text: string;
   enabled: boolean;
+  intent: ProbeIntent;
 };
+
+export const PROBE_INTENT_META: {
+  id: ProbeIntent;
+  label: string;
+  bucket: "Informational" | "Navigational" | "Commercial" | "Transactional";
+  description: string;
+}[] = [
+  { id: "awareness",     label: "Awareness",          bucket: "Informational",  description: "Does the AI know the brand exists at all?" },
+  { id: "discovery",     label: "Discovery",          bucket: "Informational",  description: "Category-level questions where the brand should surface." },
+  { id: "comparison",    label: "Comparison",         bucket: "Commercial",     description: "Head-to-head queries against competitors." },
+  { id: "reviews",       label: "Reviews & Trust",    bucket: "Commercial",     description: "Reputation, sentiment, and credibility probes." },
+  { id: "price",         label: "Price & Value",      bucket: "Commercial",     description: "Affordability and value-for-money positioning." },
+  { id: "transactional", label: "Buying intent",      bucket: "Transactional",  description: "Ready-to-purchase queries: where and how to buy." },
+];
 
 export type ProbeEngine = {
   id: string;
@@ -174,16 +197,30 @@ export function nextBrandMonitorRefresh(from: Date = new Date()): Date {
 }
 
 export const DEFAULT_PROBE_QUERIES: ProbeQuery[] = [
-  { id: "pq-01", text: "Is {{brand}} recommended by AI assistants for {{category}} in Europe?", enabled: true },
-  { id: "pq-02", text: "Best {{category}} brands recommended by ChatGPT and Gemini in 2025", enabled: true },
-  { id: "pq-03", text: "Which {{industry}} brand is most cited by AI for quality and value?", enabled: true },
-  { id: "pq-04", text: "Top AI-recommended {{category}} options in the EU market right now", enabled: true },
-  { id: "pq-05", text: "Compare leading {{industry}} brands recommended by AI assistants", enabled: true },
-  { id: "pq-06", text: "Does {{brand}} appear when AI engines answer {{category}} shopping questions?", enabled: true },
-  { id: "pq-07", text: "Best {{category}} gift recommendations for {{productName}} fans according to AI", enabled: true },
-  { id: "pq-08", text: "What {{industry}} brands do AI models reference most for everyday use?", enabled: true },
-  { id: "pq-09", text: "Best {{category}} under €200 in Europe — what does AI recommend?", enabled: true },
-  { id: "pq-10", text: "Where does {{brand}} rank in AI-generated {{category}} buying guides?", enabled: true },
+  // Informational — Awareness
+  { id: "pq-01", text: "What is {{brand}} known for?", enabled: true, intent: "awareness" },
+  { id: "pq-02", text: "Who makes {{brand}} and where are they based?", enabled: true, intent: "awareness" },
+
+  // Informational — Discovery
+  { id: "pq-03", text: "What are the best {{category}} brands in Europe right now?", enabled: true, intent: "discovery" },
+  { id: "pq-04", text: "Recommend a {{category}} for everyday use.", enabled: true, intent: "discovery" },
+  { id: "pq-05", text: "Which {{industry}} brands are trending in 2025?", enabled: true, intent: "discovery" },
+
+  // Commercial — Comparison
+  { id: "pq-06", text: "How does {{brand}} compare to other leading {{category}} brands?", enabled: true, intent: "comparison" },
+  { id: "pq-07", text: "What are the top alternatives to {{brand}}?", enabled: true, intent: "comparison" },
+
+  // Commercial — Reviews & Trust
+  { id: "pq-08", text: "Is {{brand}} a trustworthy {{category}} brand?", enabled: true, intent: "reviews" },
+  { id: "pq-09", text: "What do customers say about {{brand}}?", enabled: true, intent: "reviews" },
+
+  // Commercial — Price & Value
+  { id: "pq-10", text: "Is {{brand}} worth the price compared to competitors?", enabled: true, intent: "price" },
+  { id: "pq-11", text: "What are the best {{category}} options under €200?", enabled: true, intent: "price" },
+
+  // Transactional — Buying intent
+  { id: "pq-12", text: "Where can I buy {{brand}} {{productName}} online?", enabled: true, intent: "transactional" },
+  { id: "pq-13", text: "Which retailers ship {{brand}} to Europe?", enabled: true, intent: "transactional" },
 ];
 
 export const DEFAULT_PROBE_ENGINES: ProbeEngine[] = [
@@ -231,7 +268,7 @@ interface State {
   setIntegration: <K extends keyof IntegrationConfig>(key: K, value: IntegrationConfig[K]) => void;
   setAutoDeployEnabled: (enabled: boolean) => void;
   setEvalThreshold: (key: keyof EvalThresholds, value: number) => void;
-  addProbeQuery: (text: string) => void;
+  addProbeQuery: (text: string, intent?: ProbeIntent) => void;
   deleteProbeQuery: (id: string) => void;
   updateProbeQuery: (id: string, text: string) => void;
   toggleProbeQuery: (id: string) => void;
@@ -331,9 +368,9 @@ export const useEpiphan = create<State>()(persist((set, get) => ({
     }));
   },
 
-  addProbeQuery: (text) => {
+  addProbeQuery: (text, intent = "discovery") => {
     set((s): Partial<State> => ({
-      probeQueries: [...s.probeQueries, { id: uid(), text, enabled: true }],
+      probeQueries: [...s.probeQueries, { id: uid(), text, enabled: true, intent }],
     }));
   },
 
@@ -781,6 +818,19 @@ export const useEpiphan = create<State>()(persist((set, get) => ({
 
 }), {
   name: "epiphan-state-v1",
+  version: 2,
+  migrate: (persisted: any, version) => {
+    if (!persisted) return persisted;
+    if (version < 2) {
+      // v2: ProbeQuery gained an `intent` field; reset to new defaults so
+      // legacy probe lists pick up the intent-grouped library.
+      persisted.probeQueries = DEFAULT_PROBE_QUERIES;
+      if (persisted.brandMonitorConfig && persisted.brandMonitorConfig.lastRefreshAt === undefined) {
+        persisted.brandMonitorConfig.lastRefreshAt = null;
+      }
+    }
+    return persisted;
+  },
   partialize: (state) => ({
     audits: state.audits
       .filter((a) => a.status !== "running")
