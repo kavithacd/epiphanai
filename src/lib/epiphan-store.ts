@@ -237,6 +237,7 @@ interface State {
   toggleProbeQuery: (id: string) => void;
   toggleProbeEngine: (id: string) => void;
   setBrandMonitorConfig: (config: Partial<BrandMonitorConfig>) => void;
+  refreshBrandMonitor: () => void;
   pushToPlatform: (failureIds: string[], platform: PlatformId) => void;
   notifySlackCritical: (failureRecordId: string) => void;
 }
