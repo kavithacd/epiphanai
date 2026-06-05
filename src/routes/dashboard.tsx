@@ -10,6 +10,8 @@ import { Play, Loader2, CheckCircle2, ArrowRight, Zap, Eye, EyeOff, FileText, Fi
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { toast } from "sonner";
 import { FixStatusPill } from "@/components/StatusPills";
+import { useMyPlan, useIncrementAudit } from "@/hooks/useMyPlan";
+import { UpgradeDialog } from "@/components/UpgradeDialog";
 
 
 export const Route = createFileRoute("/dashboard")({
@@ -19,18 +21,33 @@ export const Route = createFileRoute("/dashboard")({
 
 function Dashboard() {
   const [url, setUrl] = useState("");
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const { audits, activeAuditId, startAudit } = useEpiphan();
   const navigate = useNavigate();
   const active = audits.find((a) => a.id === activeAuditId) ?? audits[0];
+  const { data: plan, limits } = useMyPlan();
+  const incAudit = useIncrementAudit();
 
   const trimmed = url.trim();
-  // Accept anything substantive: a brand site (nike.com), a marketplace URL,
-  // a Shopify domain, a deep product link, or even a raw SKU. Audit engine
-  // resolves the source at runtime.
   const valid = trimmed.length >= 3;
+  const remaining = limits && plan ? Math.max(0, limits.auditRuns - plan.auditRunsUsed) : null;
 
-  function trigger() {
+  async function trigger() {
     if (!valid) return;
+    if (plan && limits && plan.auditRunsUsed >= limits.auditRuns) {
+      setUpgradeOpen(true);
+      return;
+    }
+    try {
+      await incAudit.mutateAsync();
+    } catch (e: any) {
+      if (String(e?.message ?? "").includes("AUDIT_LIMIT_REACHED")) {
+        setUpgradeOpen(true);
+        return;
+      }
+      toast.error(e?.message ?? "Failed to start audit");
+      return;
+    }
     const looksLikeUrl = /\./.test(trimmed) || trimmed.startsWith("http");
     const target = looksLikeUrl
       ? (trimmed.startsWith("http") ? trimmed : `https://${trimmed}`)
@@ -40,6 +57,7 @@ function Dashboard() {
     setTimeout(() => navigate({ to: "/dashboard" }), 50);
     return id;
   }
+
 
   return (
     <AppShell>
