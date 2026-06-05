@@ -23,6 +23,9 @@ export function BrandMonitorSetup() {
     brandMonitorConfig.competitors,
   );
   const [brandSaved, setBrandSaved] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const { limits } = useMyPlan();
+  const maxCompetitors = limits ? (Number.isFinite(limits.competitors) ? limits.competitors : 999) : 1;
 
   useEffect(() => {
     setBrandInput(brandMonitorConfig.brandName || brandMonitorConfig.productUrl);
