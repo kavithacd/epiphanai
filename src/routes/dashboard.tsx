@@ -82,17 +82,33 @@ function Dashboard() {
               <Play className="w-3.5 h-3.5" /> Start Audit
             </button>
           </div>
-          <div className="mt-2 text-[10px] text-muted-foreground">
-            Optional: connect a platform for direct write-back —
-            <a href="/settings#integrations" className="text-primary hover:underline ml-1">Shopify, WooCommerce, Etsy, Akeneo</a>.
-            Audits work without a connector.
+          <div className="mt-2 flex items-center justify-between gap-3 flex-wrap">
+            <div className="text-[10px] text-muted-foreground">
+              Optional: connect a platform for direct write-back —
+              <a href="/settings#integrations" className="text-primary hover:underline ml-1">Shopify, WooCommerce, Etsy, Akeneo</a>.
+            </div>
+            {plan && limits && (
+              <div className="text-[10px] text-muted-foreground">
+                Audit runs: <span className="text-foreground tabular-nums">{plan.auditRunsUsed}/{Number.isFinite(limits.auditRuns) ? limits.auditRuns : "∞"}</span>
+                {remaining !== null && remaining <= 1 && plan.tier === "free" && (
+                  <a href="/pricing" className="ml-2 text-primary hover:underline">Upgrade</a>
+                )}
+              </div>
+            )}
           </div>
         </section>
 
         {active && <ActiveAuditView audit={active} />}
       </div>
+      <UpgradeDialog
+        open={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        title="You've reached your audit limit"
+        message={`Your ${plan ? plan.tier : "free"} plan allows ${limits ? limits.auditRuns : 2} audit runs. Upgrade to keep auditing.`}
+      />
     </AppShell>
   );
+
 }
 
 function ActiveAuditView({ audit }: { audit: ReturnType<typeof useEpiphan.getState>["audits"][0] }) {

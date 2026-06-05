@@ -2,6 +2,8 @@ import { useBlocker } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { CheckCircle2, Plus, Radio, Save, X } from "lucide-react";
 import { useEpiphan } from "@/lib/epiphan-store";
+import { useMyPlan } from "@/hooks/useMyPlan";
+import { UpgradeDialog } from "@/components/UpgradeDialog";
 
 const inputCls =
   "w-full bg-background border border-border rounded px-3 py-2 text-xs font-mono outline-none focus:border-primary";
