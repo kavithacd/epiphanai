@@ -1,6 +1,10 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { Activity, Inbox, History, Shield, Settings as Cog, Sparkles, Plus, TrendingUp, Radio } from "lucide-react";
+import { Activity, Inbox, History, Shield, Settings as Cog, Sparkles, Plus, TrendingUp, Radio, LogOut, Loader2 } from "lucide-react";
+import { useEffect } from "react";
 import { useEpiphan } from "@/lib/epiphan-store";
+import { useAuthUser, useMyPlan } from "@/hooks/useMyPlan";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const NAV = [
   { to: "/dashboard", label: "Audit Engine", icon: Activity },
@@ -12,13 +16,41 @@ const NAV = [
   { to: "/settings", label: "Settings", icon: Cog },
 ];
 
+const TIER_LABEL: Record<string, string> = {
+  free: "Free",
+  starter: "Starter",
+  pro: "Pro",
+  enterprise: "Enterprise",
+};
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const loc = useLocation();
   const navigate = useNavigate();
   const audits = useEpiphan((s) => s.audits);
+  const { user, loading } = useAuthUser();
+  const { data: plan } = useMyPlan();
+
+  useEffect(() => {
+    if (!loading && !user) navigate({ to: "/auth", replace: true });
+  }, [loading, user, navigate]);
+
   const pendingReview = audits
     .flatMap((a) => a.failures)
     .filter((f) => f.status === "review_pending").length;
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    toast.success("Signed out");
+    navigate({ to: "/auth", replace: true });
+  }
+
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background text-muted-foreground">
+        <Loader2 className="w-4 h-4 animate-spin mr-2" /> Loading…
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex bg-background text-foreground font-mono text-sm">
@@ -57,6 +89,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
+
+        <div className="border-t border-border p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="min-w-0 flex-1">
+              <div className="text-[11px] text-foreground truncate">{user.email}</div>
+              <Link
+                to="/pricing"
+                className="text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
+              >
+                Plan: {plan ? TIER_LABEL[plan.tier] : "…"}
+                {plan && plan.tier === "free" && (
+                  <span className="ml-1 text-primary normal-case tracking-normal">· Upgrade</span>
+                )}
+              </Link>
+            </div>
+            <button
+              onClick={handleLogout}
+              title="Sign out"
+              className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-accent/40"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
       </aside>
       <main className="flex-1 min-w-0 overflow-x-hidden flex flex-col">
         <header className="h-12 border-b border-border bg-surface/60 backdrop-blur flex items-center justify-between px-6 shrink-0">
