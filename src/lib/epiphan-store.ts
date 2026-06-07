@@ -254,6 +254,7 @@ interface State {
   probeQueries: ProbeQuery[];
   probeEngines: ProbeEngine[];
   brandMonitorConfig: BrandMonitorConfig;
+  currentUserId: string | null;
   startAudit: (url: string) => string;
   approveFix: (failureId: string) => void;
   bulkApprove: (failureIds: string[]) => void;
@@ -263,6 +264,7 @@ interface State {
   rollbackFix: (failureId: string) => void;
   getAudit: (id: string) => AuditRecord | undefined;
   clearAll: () => void;
+  resetForUser: (userId: string | null) => void;
   autoFix: (failureId: string) => void;
   regenerateFix: (failureId: string) => void;
   setIntegration: <K extends keyof IntegrationConfig>(key: K, value: IntegrationConfig[K]) => void;
@@ -350,6 +352,31 @@ export const useEpiphan = create<State>()(persist((set, get) => ({
     productUrl: "",
     competitors: [],
     lastRefreshAt: null,
+  },
+  currentUserId: null,
+
+  resetForUser: (userId) => {
+    set((s): Partial<State> => {
+      if (s.currentUserId === userId) return {};
+      return {
+        currentUserId: userId,
+        audits: [],
+        activeAuditId: null,
+        traces: [],
+        guardrailEvents: [],
+        fixHistory: [],
+        totalCostUsd: 0,
+        probeQueries: DEFAULT_PROBE_QUERIES,
+        probeEngines: DEFAULT_PROBE_ENGINES,
+        brandMonitorConfig: {
+          configured: false,
+          brandName: "",
+          productUrl: "",
+          competitors: [],
+          lastRefreshAt: null,
+        },
+      };
+    });
   },
 
   getAudit: (id) => get().audits.find((a) => a.id === id),
@@ -851,6 +878,7 @@ export const useEpiphan = create<State>()(persist((set, get) => ({
     probeQueries: state.probeQueries,
     probeEngines: state.probeEngines,
     brandMonitorConfig: state.brandMonitorConfig,
+    currentUserId: state.currentUserId,
   }),
 }));
 

@@ -31,9 +31,16 @@ function Dashboard() {
   const trimmed = url.trim();
   const valid = trimmed.length >= 3;
   const remaining = limits && plan ? Math.max(0, limits.auditRuns - plan.auditRunsUsed) : null;
+  const auditLocked = !!(limits && !limits.hasAudit);
+  const isInfinite = limits ? !Number.isFinite(limits.auditRuns) : false;
+  const lowQuota = !!(limits && plan && !isInfinite && remaining !== null && remaining <= 1 && plan.tier !== "enterprise");
 
   async function trigger() {
     if (!valid) return;
+    if (auditLocked) {
+      setUpgradeOpen(true);
+      return;
+    }
     if (plan && limits && plan.auditRunsUsed >= limits.auditRuns) {
       setUpgradeOpen(true);
       return;
@@ -58,6 +65,27 @@ function Dashboard() {
     return id;
   }
 
+  if (auditLocked) {
+    return (
+      <AppShell>
+        <div className="max-w-2xl mx-auto p-12">
+          <div className="border border-border rounded-lg bg-surface p-10 text-center space-y-4">
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Audit Engine</div>
+            <h1 className="text-xl font-sans font-medium">Audit Engine is locked on your plan</h1>
+            <p className="text-xs text-muted-foreground max-w-md mx-auto">
+              You're on the Brand Monitoring plan. Upgrade to the Bundle to unlock the Audit Engine, Review Queue, Fix Impact and Audit History.
+            </p>
+            <a
+              href="/pricing"
+              className="inline-block px-4 py-2 rounded bg-primary text-primary-foreground text-xs font-medium"
+            >
+              See bundle plans
+            </a>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell>
@@ -89,9 +117,9 @@ function Dashboard() {
             </div>
             {plan && limits && (
               <div className="text-[10px] text-muted-foreground">
-                Audit runs: <span className="text-foreground tabular-nums">{plan.auditRunsUsed}/{Number.isFinite(limits.auditRuns) ? limits.auditRuns : "∞"}</span>
-                {remaining !== null && remaining <= 1 && plan.tier === "free" && (
-                  <a href="/pricing" className="ml-2 text-primary hover:underline">Upgrade</a>
+                Audit runs: <span className="text-foreground tabular-nums">{plan.auditRunsUsed}/{isInfinite ? "∞" : limits.auditRuns}</span>
+                {lowQuota && (
+                  <a href="/pricing" className="ml-2 text-primary hover:underline">Running low — upgrade</a>
                 )}
               </div>
             )}
@@ -103,13 +131,18 @@ function Dashboard() {
       <UpgradeDialog
         open={upgradeOpen}
         onClose={() => setUpgradeOpen(false)}
-        title="You've reached your audit limit"
-        message={`Your ${plan ? plan.tier : "free"} plan allows ${limits ? limits.auditRuns : 2} audit runs. Upgrade to keep auditing.`}
+        title={auditLocked ? "Audit Engine is locked" : "You've reached your audit limit"}
+        message={
+          auditLocked
+            ? "Your plan only includes Brand Monitoring. Upgrade to the Bundle to run audits."
+            : `Your ${plan ? plan.tier : "free"} plan allows ${limits ? limits.auditRuns : 2} audit runs. Upgrade to keep auditing.`
+        }
       />
     </AppShell>
   );
 
 }
+
 
 function ActiveAuditView({ audit }: { audit: ReturnType<typeof useEpiphan.getState>["audits"][0] }) {
   const isRunning = audit.status === "running";

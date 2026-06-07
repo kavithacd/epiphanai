@@ -7,6 +7,8 @@ import { useEpiphan } from "@/lib/epiphan-store";
 import { nextBrandMonitorRefresh } from "@/lib/epiphan-store";
 import { mulberry32, hashStr, seededInt, resolveProbeQuery } from "@/lib/epiphan-data";
 import { Radio, ChevronDown, ChevronRight, ExternalLink, Download, X, Copy, Check, Settings as SettingsIcon, SlidersHorizontal, RefreshCw } from "lucide-react";
+import { useMyPlan } from "@/hooks/useMyPlan";
+
 
 export const Route = createFileRoute("/monitoring")({
   head: () => ({ meta: [{ title: "Brand Monitoring · epiphanAI" }] }),
@@ -276,6 +278,8 @@ function BrandMonitoring() {
   const probeQueries = useEpiphan((s) => s.probeQueries);
   const brandMonitorConfig = useEpiphan((s) => s.brandMonitorConfig);
   const refreshBrandMonitor = useEpiphan((s) => s.refreshBrandMonitor);
+  const { limits } = useMyPlan();
+  const monitorLocked = !!(limits && !limits.hasMonitor);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
@@ -285,6 +289,7 @@ function BrandMonitoring() {
   const [tab, setTab] = useState<"dashboard" | "setup" | "probes">(
     brandMonitorConfig.configured ? "dashboard" : "setup",
   );
+
 
   // Auto-refresh every Monday at 8:00 PM (local time) while monitoring is active.
   // Runs immediately on load if the scheduled refresh was missed (e.g. tab closed).
@@ -360,8 +365,32 @@ function BrandMonitoring() {
     </header>
   );
 
+  if (monitorLocked) {
+    return (
+      <AppShell>
+        <div className="max-w-2xl mx-auto p-12">
+          <div className="border border-border rounded-lg bg-surface p-10 text-center space-y-4">
+            <Radio className="w-8 h-8 text-muted-foreground mx-auto" />
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Brand Monitoring</div>
+            <h1 className="text-xl font-sans font-medium">Brand Monitoring is locked on your plan</h1>
+            <p className="text-xs text-muted-foreground max-w-md mx-auto">
+              You're on the Audit Engine plan. Upgrade to the Bundle to unlock Brand Monitoring, competitor citations, and Share of Voice tracking.
+            </p>
+            <a
+              href="/pricing"
+              className="inline-block px-4 py-2 rounded bg-primary text-primary-foreground text-xs font-medium"
+            >
+              See bundle plans
+            </a>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
   // Setup tab — always available
   if (tab === "setup") {
+
     return (
       <AppShell>
         <div className="max-w-3xl mx-auto p-8 space-y-6">
