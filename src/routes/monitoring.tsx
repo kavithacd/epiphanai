@@ -276,6 +276,8 @@ function BrandMonitoring() {
   const probeQueries = useEpiphan((s) => s.probeQueries);
   const brandMonitorConfig = useEpiphan((s) => s.brandMonitorConfig);
   const refreshBrandMonitor = useEpiphan((s) => s.refreshBrandMonitor);
+  const { limits } = useMyPlan();
+  const monitorLocked = !!(limits && !limits.hasMonitor);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
@@ -285,6 +287,7 @@ function BrandMonitoring() {
   const [tab, setTab] = useState<"dashboard" | "setup" | "probes">(
     brandMonitorConfig.configured ? "dashboard" : "setup",
   );
+
 
   // Auto-refresh every Monday at 8:00 PM (local time) while monitoring is active.
   // Runs immediately on load if the scheduled refresh was missed (e.g. tab closed).
