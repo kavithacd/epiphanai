@@ -46,30 +46,30 @@ function PricingPage() {
           </p>
         </div>
 
-        <div className="mt-10 grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {PRICING_TIERS.map((t) => (
             <article
               key={t.id}
-              className={`flex flex-col border rounded-lg p-5 bg-surface ${
-                t.highlight ? "border-primary/60 shadow-[0_0_0_1px_var(--color-primary)]" : "border-border"
+              className={`relative flex flex-col border rounded-lg p-5 bg-surface ${
+                t.highlight
+                  ? "border-primary/60 shadow-[0_0_0_1px_var(--color-primary)]"
+                  : "border-border"
               }`}
             >
-              <div className="flex items-center justify-between">
-                <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                  {t.name}
-                </div>
-                {t.highlight && (
-                  <span className="text-[9px] uppercase tracking-widest text-primary border border-primary/40 rounded px-1.5 py-0.5">
-                    Popular
-                  </span>
-                )}
+              {t.highlight && (
+                <span className="absolute -top-2 right-4 text-[9px] uppercase tracking-widest text-primary-foreground bg-primary rounded px-1.5 py-0.5">
+                  Popular
+                </span>
+              )}
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                {t.name}
               </div>
-              <div className="mt-3 flex items-baseline gap-1.5">
+              <div className="mt-2 flex items-baseline gap-1.5">
                 <span className="text-3xl font-medium tabular-nums">{t.price}</span>
                 <span className="text-[11px] text-muted-foreground">{t.cadence}</span>
               </div>
-              <p className="text-xs text-muted-foreground mt-2">{t.blurb}</p>
-              <ul className="mt-4 space-y-1.5 flex-1">
+              <p className="text-xs text-muted-foreground mt-2 min-h-8">{t.blurb}</p>
+              <ul className="mt-3 space-y-1.5 flex-1">
                 {t.bullets.map((b) => (
                   <li key={b} className="flex items-start gap-2 text-[11px] text-foreground">
                     <Check className="w-3 h-3 mt-0.5 text-sev-low shrink-0" />
@@ -80,21 +80,21 @@ function PricingPage() {
               {t.id === "enterprise" ? (
                 <a
                   href="mailto:sales@epiphanai.eu?subject=Enterprise%20enquiry"
-                  className="mt-5 px-4 py-2 rounded border border-border text-xs text-center hover:border-primary"
+                  className="mt-4 px-4 py-2 rounded border border-border text-xs text-center hover:border-primary"
                 >
                   Talk to sales
                 </a>
               ) : t.id === "free" ? (
                 <Link
                   to="/auth"
-                  className="mt-5 px-4 py-2 rounded border border-border text-xs text-center hover:border-primary"
+                  className="mt-4 px-4 py-2 rounded border border-border text-xs text-center hover:border-primary"
                 >
                   Get started free
                 </Link>
               ) : (
                 <button
                   onClick={() => alert("Checkout is not wired yet. Drop us a line at sales@epiphanai.eu and we'll get you onboarded.")}
-                  className={`mt-5 px-4 py-2 rounded text-xs ${
+                  className={`mt-4 px-4 py-2 rounded text-xs ${
                     t.highlight
                       ? "bg-primary text-primary-foreground"
                       : "border border-border hover:border-primary"
@@ -106,6 +106,7 @@ function PricingPage() {
             </article>
           ))}
         </div>
+
 
         <div className="mt-10 text-center text-[11px] text-muted-foreground">
           Need a custom volume, on-prem deployment, or to bundle both workflows above Pro limits?
