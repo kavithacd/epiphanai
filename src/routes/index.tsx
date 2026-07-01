@@ -68,13 +68,10 @@ function Hero() {
             Sovereign Generative Engine Optimization · v1.0
           </div>
           <h1 className="text-5xl md:text-7xl font-sans font-medium tracking-tight leading-[1.05] text-foreground">
-            Content is king.<br />
-            <span className="text-muted-foreground">We are the </span>
-            <span className="bg-gradient-to-r from-primary via-p2 to-p5 bg-clip-text text-transparent">kingmakers.</span>
+            Make your <span className="bg-gradient-to-r from-primary via-p2 to-p5 bg-clip-text text-transparent">Hero Products</span> the most-cited on AI
           </h1>
           <p className="mt-6 max-w-xl text-base text-muted-foreground leading-relaxed">
-            Moving EU e-commerce from AI-invisible to AI-dominant with sovereign GEO remediation,
-            autonomous self-healing, and zero data leakage to third-party LLMs.
+            Identify why your products are not being cited as they should on generative engines. Heal your content to make your brand top-cited on LLMs.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Link to="/start" className="px-5 py-2.5 rounded bg-primary text-primary-foreground hover:opacity-90 inline-flex items-center gap-2 text-sm font-medium">
