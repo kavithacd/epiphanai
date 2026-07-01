@@ -37,9 +37,6 @@ function TopNav() {
             <Sparkles className="w-4 h-4 text-primary" />
           </div>
           <div className="font-semibold tracking-tight">Shine</div>
-          <div className="text-[9px] text-muted-foreground uppercase tracking-widest border-l border-border pl-2 ml-1">
-            Tessera
-          </div>
         </Link>
         <nav className="hidden md:flex items-center gap-6 text-xs text-muted-foreground">
           <a href="#pillars" className="hover:text-foreground">Visibility Taxonomy</a>
