@@ -61,7 +61,7 @@ export const PRICING_TIERS = [
     name: "Free",
     price: "€0",
     cadence: "forever",
-    blurb: "Try epiphanAI on a single brand.",
+    blurb: "Try Shine on a single brand.",
     bullets: [
       "2 audit engine runs (total)",
       "1 brand monitoring run",

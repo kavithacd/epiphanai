@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/start")({
-  head: () => ({ meta: [{ title: "Start an audit · epiphanAI" }] }),
+  head: () => ({ meta: [{ title: "Start an audit · Shine" }] }),
   component: StartFlow,
 });
 
@@ -90,7 +90,7 @@ function StartFlow() {
             <div className="w-7 h-7 rounded bg-primary/15 border border-primary/40 grid place-items-center">
               <Sparkles className="w-4 h-4 text-primary" />
             </div>
-            <div className="font-semibold tracking-tight">epiphanAI</div>
+            <div className="font-semibold tracking-tight">Shine</div>
             <div className="text-[9px] text-muted-foreground uppercase tracking-widest border-l border-border pl-2 ml-1">Tessera</div>
           </Link>
           <Link to="/dashboard" className="text-[10px] text-muted-foreground hover:text-foreground uppercase tracking-widest">

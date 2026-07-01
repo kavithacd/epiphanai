@@ -5,9 +5,9 @@ import { PRICING_TIERS } from "@/lib/plan";
 export const Route = createFileRoute("/pricing")({
   head: () => ({
     meta: [
-      { title: "Pricing · epiphanAI" },
+      { title: "Pricing · Shine" },
       { name: "description", content: "Audit Engine, Brand Monitoring, or both. Starter from €25/mo, Pro from €100/mo. EU billing." },
-      { property: "og:title", content: "Pricing · epiphanAI" },
+      { property: "og:title", content: "Pricing · Shine" },
       { property: "og:description", content: "Audit Engine, Brand Monitoring, or both. Starter from €25/mo, Pro from €100/mo." },
     ],
   }),
@@ -23,7 +23,7 @@ function PricingPage() {
             <div className="w-7 h-7 rounded bg-primary/15 border border-primary/40 grid place-items-center">
               <Sparkles className="w-4 h-4 text-primary" />
             </div>
-            <div className="font-semibold tracking-tight">epiphanAI</div>
+            <div className="font-semibold tracking-tight">Shine</div>
           </Link>
           <nav className="flex items-center gap-4 text-xs">
             <Link to="/auth" className="text-muted-foreground hover:text-foreground">Sign in</Link>

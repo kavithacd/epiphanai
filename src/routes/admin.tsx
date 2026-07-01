@@ -6,7 +6,7 @@ import { MODEL_MATRIX, PILLARS, Failure, Fix, mulberry32 } from "@/lib/epiphan-d
 import { Cpu, ShieldCheck, ShieldAlert, Lock, Activity, Coins, ThumbsUp, ThumbsDown, Microscope } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
-  head: () => ({ meta: [{ title: "Admin Cockpit · epiphanAI" }] }),
+  head: () => ({ meta: [{ title: "Admin Cockpit · Shine" }] }),
   component: Admin,
 });
 
@@ -41,7 +41,7 @@ function Admin() {
             <h1 className="text-2xl font-sans font-medium mt-1">Trace, evals & guardrails</h1>
           </div>
           <div className="text-[10px] text-muted-foreground">
-            Tessera · operator@tessera.eu
+            operator@shine.eu
           </div>
         </header>
 

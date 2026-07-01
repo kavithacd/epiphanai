@@ -479,7 +479,7 @@ export const useEpiphan = create<State>()(persist((set, get) => ({
     const req = buildPlatformRequest(platform, failures, integrations);
     logTrace(set, get, {
       model: PLATFORM_LABEL[platform], workflow: `WF-15 Push · ${platform}`,
-      promptHash: hash(), operator: "consultant@tessera.eu",
+      promptHash: hash(), operator: "consultant@shine.eu",
       durationMs: 480 + Math.floor(Math.random() * 600),
       tokensIn: 0, tokensOut: 0, costUsd: 0, status: "success",
     });
@@ -586,7 +586,7 @@ export const useEpiphan = create<State>()(persist((set, get) => ({
               logTrace(set, get, {
                 model: MODEL_MATRIX[tpl.model as keyof typeof MODEL_MATRIX]?.name ?? tpl.model,
                 workflow: `WF-0${p === "P1" ? 8 : p === "P2" ? 9 : p === "P3" ? 10 : 11} ${tpl.type}`,
-                promptHash: hash(), operator: "consultant@tessera.eu",
+                promptHash: hash(), operator: "consultant@shine.eu",
                 durationMs: 600 + Math.floor(Math.random() * 1800),
                 tokensIn: 240 + Math.floor(Math.random() * 800),
                 tokensOut: 80 + Math.floor(Math.random() * 600),
@@ -661,7 +661,7 @@ export const useEpiphan = create<State>()(persist((set, get) => ({
     }));
     logTrace(set, get, {
       model: "Shopify Admin API", workflow: "Fix deployment",
-      promptHash: hash(), operator: "consultant@tessera.eu",
+      promptHash: hash(), operator: "consultant@shine.eu",
       durationMs: 820, tokensIn: 0, tokensOut: 0, costUsd: 0, status: "success",
     });
     if (target) {
@@ -740,7 +740,7 @@ export const useEpiphan = create<State>()(persist((set, get) => ({
       logTrace(set, get, {
         model: MODEL_MATRIX[tpl.model as keyof typeof MODEL_MATRIX]?.name ?? tpl.model,
         workflow: `WF-0${failure.pillar === "P1" ? 8 : failure.pillar === "P2" ? 9 : failure.pillar === "P3" ? 10 : 11} ${tpl.type} (regen)`,
-        promptHash: hash(), operator: "consultant@tessera.eu",
+        promptHash: hash(), operator: "consultant@shine.eu",
         durationMs: 600 + Math.floor(Math.random() * 1800),
         tokensIn: 240 + Math.floor(Math.random() * 800),
         tokensOut: 80 + Math.floor(Math.random() * 600),
@@ -780,7 +780,7 @@ export const useEpiphan = create<State>()(persist((set, get) => ({
     if (applied > 0) {
       logTrace(set, get, {
         model: "Shopify Admin API", workflow: `Bulk deploy · ${applied}`,
-        promptHash: hash(), operator: "consultant@tessera.eu",
+        promptHash: hash(), operator: "consultant@shine.eu",
         durationMs: 820 + applied * 120, tokensIn: 0, tokensOut: 0, costUsd: 0, status: "success",
       });
       toast.success(`${applied} fix${applied === 1 ? "" : "es"} deployed`, {
@@ -837,7 +837,7 @@ export const useEpiphan = create<State>()(persist((set, get) => ({
     }));
     logTrace(set, get, {
       model: "Shopify Admin API", workflow: "WF-13 Rollback",
-      promptHash: hash(), operator: "consultant@tessera.eu",
+      promptHash: hash(), operator: "consultant@shine.eu",
       durationMs: 410, tokensIn: 0, tokensOut: 0, costUsd: 0, status: "success",
     });
     toast.message("Rolled back", { description: "Pre-deploy snapshot restored on the live store." });

@@ -6,7 +6,7 @@ import { Save, Webhook, Slack as SlackIcon, ShoppingBag, Globe, Database, Layers
 import { IntegrationConfig } from "@/lib/epiphan-export";
 
 export const Route = createFileRoute("/settings")({
-  head: () => ({ meta: [{ title: "Settings · epiphanAI" }] }),
+  head: () => ({ meta: [{ title: "Settings · Shine" }] }),
   component: Settings,
 });
 
@@ -18,7 +18,7 @@ function Settings() {
   const evalThresholds = useEpiphan((s) => s.evalThresholds);
   const setEvalThreshold = useEpiphan((s) => s.setEvalThreshold);
   const [ollamaUrl, setOllamaUrl] = useState("http://localhost:11434");
-  const [n8nUrl, setN8nUrl] = useState("https://n8n.tessera.internal/webhook/audit/start");
+  const [n8nUrl, setN8nUrl] = useState("https://n8n.shine.internal/webhook/audit/start");
   const [saved, setSaved] = useState(false);
 
   const upd = <K extends keyof IntegrationConfig>(k: K) =>
@@ -214,7 +214,7 @@ function Settings() {
           </div>
 
           <Field icon={<Webhook className="w-3 h-3" />} label="Generic webhook URL"
-            hint="Send the standard epiphanAI fix payload to any HTTP endpoint (Zapier, n8n, Make, custom service).">
+            hint="Send the standard Shine fix payload to any HTTP endpoint (Zapier, n8n, Make, custom service).">
             <input value={integrations.genericWebhook} onChange={(e) => upd("genericWebhook")(e.target.value)}
               placeholder="https://hooks.example.com/epiphan" className={inputCls} />
           </Field>
@@ -227,7 +227,7 @@ function Settings() {
             <li>• External API access limited to WF-06 (P5 sentiment probes, category-level only).</li>
             <li>• All writes preceded by a rollback snapshot stored in Supabase.</li>
             <li>• Audit trail retention: 90 days · Eval gate outputs: indefinitely.</li>
-            <li>• GDPR data controller: Tessera · EU AI Act risk class: limited.</li>
+            <li>• GDPR data controller: Shine · EU AI Act risk class: limited.</li>
           </ul>
         </section>
       </div>

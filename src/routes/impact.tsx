@@ -8,7 +8,7 @@ import { TrendingUp, Sparkles, ArrowUpRight, Zap } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, CartesianGrid, Tooltip, Cell } from "recharts";
 
 export const Route = createFileRoute("/impact")({
-  head: () => ({ meta: [{ title: "Fix Impact · epiphanAI" }] }),
+  head: () => ({ meta: [{ title: "Fix Impact · Shine" }] }),
   component: ImpactDashboard,
 });
 
@@ -50,7 +50,7 @@ function ImpactDashboard() {
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Outcomes</div>
           <h1 className="text-2xl font-sans font-medium mt-1">Fix impact</h1>
           <p className="text-muted-foreground text-xs mt-1">
-            Every deployment recorded with the GEO-score delta it caused. The real story of what epiphanAI changed for {audits[0]?.storeName ?? "your store"}.
+            Every deployment recorded with the GEO-score delta it caused. The real story of what Shine changed for {audits[0]?.storeName ?? "your store"}.
           </p>
         </header>
 
