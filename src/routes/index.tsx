@@ -6,10 +6,10 @@ import { useState } from "react";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "epiphanAI — Sovereign GEO for EU E-commerce" },
-      { name: "description", content: "Move EU e-commerce from AI-invisible to AI-dominant. Sovereign GEO remediation with zero data leakage." },
-      { property: "og:title", content: "epiphanAI — Sovereign GEO for EU E-commerce" },
-      { property: "og:description", content: "Move EU e-commerce from AI-invisible to AI-dominant. Sovereign GEO remediation with zero data leakage." },
+      { title: "epiphanAI — Make Hero Products the most-cited on AI" },
+      { name: "description", content: "Identify why your products aren't cited on generative engines and heal your content to become top-cited on LLMs." },
+      { property: "og:title", content: "epiphanAI — Make Hero Products the most-cited on AI" },
+      { property: "og:description", content: "Identify why your products aren't cited on generative engines and heal your content to become top-cited on LLMs." },
     ],
   }),
   component: Landing,
@@ -65,7 +65,7 @@ function Hero() {
         >
           <div className="inline-flex items-center gap-2 px-2.5 py-1 border border-border rounded-full text-[10px] uppercase tracking-widest text-muted-foreground mb-6">
             <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-            Sovereign Generative Engine Optimization · v1.0
+            v1.0
           </div>
           <h1 className="text-5xl md:text-7xl font-sans font-medium tracking-tight leading-[1.05] text-foreground">
             Make your <span className="bg-gradient-to-r from-primary via-p2 to-p5 bg-clip-text text-transparent">Hero Products</span> the most-cited on AI
@@ -278,13 +278,6 @@ function Footer() {
     <footer className="py-10 text-xs text-muted-foreground">
       <div className="max-w-7xl mx-auto px-6 flex flex-wrap gap-4 items-center justify-between">
         <div>© 2026 Tessera · epiphanAI v1.0</div>
-        <div className="flex items-center gap-4">
-          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded border border-border">
-            <span className="w-1.5 h-1.5 rounded-full bg-sev-low animate-pulse" />
-            Sovereign inference · zero data leakage
-          </div>
-          <div>GDPR · EU AI Act compliant</div>
-        </div>
       </div>
     </footer>
   );
