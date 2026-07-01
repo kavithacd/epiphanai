@@ -18,7 +18,7 @@ import { toast } from "sonner";
 
 
 export const Route = createFileRoute("/review")({
-  head: () => ({ meta: [{ title: "Review Queue · epiphanAI" }] }),
+  head: () => ({ meta: [{ title: "Review Queue · Shine" }] }),
   component: ReviewQueue,
 });
 
@@ -61,7 +61,7 @@ function ReviewQueue() {
   const copyWebhook = async () => {
     const target = selectedItems.length ? selectedItems : items;
     await copyToClipboard(JSON.stringify(toWebhookPayload(target), null, 2));
-    toast.success("Webhook payload copied", { description: "Standard epiphanAI envelope on your clipboard." });
+    toast.success("Webhook payload copied", { description: "Standard Shine envelope on your clipboard." });
   };
   const applyBulk = () => {
     if (selectedItems.length === 0) return;

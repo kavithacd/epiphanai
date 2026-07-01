@@ -11,7 +11,7 @@ import { toCsv, toJson, downloadFile } from "@/lib/epiphan-export";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/history")({
-  head: () => ({ meta: [{ title: "Audit History · epiphanAI" }] }),
+  head: () => ({ meta: [{ title: "Audit History · Shine" }] }),
   component: History,
 });
 

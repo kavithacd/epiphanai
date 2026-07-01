@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 
 export const Route = createFileRoute("/auth")({
-  head: () => ({ meta: [{ title: "Sign in · epiphanAI" }] }),
+  head: () => ({ meta: [{ title: "Sign in · Shine" }] }),
   component: AuthPage,
 });
 
@@ -75,7 +75,7 @@ function AuthPage() {
           <div className="w-7 h-7 rounded bg-primary/15 border border-primary/40 grid place-items-center">
             <Sparkles className="w-4 h-4 text-primary" />
           </div>
-          <span className="font-semibold tracking-tight">epiphanAI</span>
+          <span className="font-semibold tracking-tight">Shine</span>
         </Link>
 
         <h1 className="text-xl font-sans font-medium">

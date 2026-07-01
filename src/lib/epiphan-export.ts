@@ -52,7 +52,7 @@ export const PLATFORM_LABEL: Record<PlatformId, string> = {
 
 export function toWebhookPayload(failures: Failure[]) {
   return {
-    source: "epiphanAI",
+    source: "Shine",
     version: "1.0",
     deployedAt: new Date().toISOString(),
     count: failures.length,
@@ -177,7 +177,7 @@ export function buildPlatformRequest(
         url: cfg.slackWebhook || "https://hooks.slack.com/services/T000/B000/XXX",
         headers: { "Content-Type": "application/json" },
         body: {
-          text: `:rotating_light: epiphanAI · ${failures.length} GEO fix${failures.length === 1 ? "" : "es"} deployed`,
+          text: `:rotating_light: Shine · ${failures.length} GEO fix${failures.length === 1 ? "" : "es"} deployed`,
           blocks: failures.slice(0, 5).map((f) => {
             const d = describeFix(f);
             return {

@@ -6,9 +6,9 @@ import { useState } from "react";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "epiphanAI — Make Hero Products the most-cited on AI" },
+      { title: "Shine — Make Hero Products the most-cited on AI" },
       { name: "description", content: "Identify why your products aren't cited on generative engines and heal your content to become top-cited on LLMs." },
-      { property: "og:title", content: "epiphanAI — Make Hero Products the most-cited on AI" },
+      { property: "og:title", content: "Shine — Make Hero Products the most-cited on AI" },
       { property: "og:description", content: "Identify why your products aren't cited on generative engines and heal your content to become top-cited on LLMs." },
     ],
   }),
@@ -36,13 +36,10 @@ function TopNav() {
           <div className="w-7 h-7 rounded bg-primary/15 border border-primary/40 grid place-items-center">
             <Sparkles className="w-4 h-4 text-primary" />
           </div>
-          <div className="font-semibold tracking-tight">epiphanAI</div>
-          <div className="text-[9px] text-muted-foreground uppercase tracking-widest border-l border-border pl-2 ml-1">
-            Tessera
-          </div>
+          <div className="font-semibold tracking-tight">Shine</div>
         </Link>
         <nav className="hidden md:flex items-center gap-6 text-xs text-muted-foreground">
-          <a href="#pillars" className="hover:text-foreground">Taxonomy</a>
+          <a href="#pillars" className="hover:text-foreground">Visibility Taxonomy</a>
           <Link to="/dashboard" className="px-3 py-1.5 rounded bg-primary text-primary-foreground hover:opacity-90 inline-flex items-center gap-1.5 text-xs">
             Open Console <ArrowRight className="w-3 h-3" />
           </Link>
@@ -87,7 +84,7 @@ function Hero() {
           <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-px bg-border max-w-3xl">
             {[
               ["0%", "Hallucination rate"],
-              ["≥96%", "Taxonomy routing"],
+              ["≥96%", "Visibility Taxonomy routing"],
               ["<60min", "Audit → report"],
               ["100%", "Schema.org pass"],
             ].map(([n, l]) => (
@@ -117,7 +114,7 @@ function Pillars() {
       <div className="max-w-7xl mx-auto px-6">
         <div className="grid md:grid-cols-3 gap-12 mb-12">
           <div className="md:col-span-1">
-            <div className="text-[10px] uppercase tracking-widest text-primary mb-3">Taxonomy</div>
+            <div className="text-[10px] uppercase tracking-widest text-primary mb-3">Visibility Taxonomy</div>
             <h2 className="text-3xl font-sans font-medium leading-tight">The five pillars that decide whether AI cites you.</h2>
           </div>
           <p className="md:col-span-2 text-muted-foreground leading-relaxed text-base">
@@ -150,7 +147,7 @@ function BeforeAfter() {
         <div className="text-center max-w-2xl mx-auto mb-12">
           <div className="text-[10px] uppercase tracking-widest text-primary mb-3">Before · After</div>
           <h2 className="text-3xl font-sans font-medium leading-tight">From AI-invisible to AI-cited.</h2>
-          <p className="text-muted-foreground mt-3 text-sm">Drag the divider to see the same store before and after epiphanAI remediation.</p>
+          <p className="text-muted-foreground mt-3 text-sm">Drag the divider to see the same store before and after Shine remediation.</p>
         </div>
         <div
           className="relative w-full aspect-[16/9] rounded-lg overflow-hidden border border-border select-none cursor-ew-resize bg-background"
@@ -211,7 +208,7 @@ function BeforePane() {
 function AfterPane() {
   return (
     <div className="absolute inset-0 bg-background p-8 font-mono text-xs">
-      <div className="text-muted-foreground mb-3">https://acme-apparel.myshopify.com · healed by epiphanAI</div>
+      <div className="text-muted-foreground mb-3">https://acme-apparel.myshopify.com · healed by Shine</div>
       <div className="border border-primary/30 rounded p-4 bg-surface/50 space-y-3">
         <div className="flex items-center justify-between">
           <div className="text-foreground font-medium">Merino Crew Sweater</div>
@@ -277,7 +274,7 @@ function Footer() {
   return (
     <footer className="py-10 text-xs text-muted-foreground">
       <div className="max-w-7xl mx-auto px-6 flex flex-wrap gap-4 items-center justify-between">
-        <div>© 2026 Tessera · epiphanAI v1.0</div>
+        <div>© 2026 Shine v1.0</div>
       </div>
     </footer>
   );

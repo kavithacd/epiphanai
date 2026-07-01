@@ -15,7 +15,7 @@ import { UpgradeDialog } from "@/components/UpgradeDialog";
 
 
 export const Route = createFileRoute("/dashboard")({
-  head: () => ({ meta: [{ title: "Audit Engine · epiphanAI" }] }),
+  head: () => ({ meta: [{ title: "Audit Engine · Shine" }] }),
   component: Dashboard,
 });
 

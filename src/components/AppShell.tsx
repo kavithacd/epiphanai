@@ -100,8 +100,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Sparkles className="w-4 h-4 text-primary" />
           </div>
           <div>
-            <div className="text-foreground font-semibold tracking-tight">epiphanAI</div>
-            <div className="text-[10px] text-muted-foreground uppercase tracking-widest">Tessera</div>
+            <div className="text-foreground font-semibold tracking-tight">Shine</div>
           </div>
         </Link>
         <nav className="flex-1 p-2 space-y-0.5">
@@ -195,7 +194,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <main className="flex-1 min-w-0 overflow-x-hidden flex flex-col">
         <header className="h-12 border-b border-border bg-surface/60 backdrop-blur flex items-center justify-between px-6 shrink-0">
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-            {NAV.find((n) => loc.pathname.startsWith(n.to))?.label ?? "epiphanAI"}
+            {NAV.find((n) => loc.pathname.startsWith(n.to))?.label ?? "Shine"}
           </div>
           {!loc.pathname.startsWith("/monitoring") && (
             <button
