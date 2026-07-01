@@ -88,7 +88,7 @@ export const PRICING_TIERS = [
   {
     id: "starter-bundle",
     name: "Starter · Bundle",
-    price: "€49",
+    price: "€40",
     cadence: "per month · both workflows",
     blurb: "Both workflows at Starter limits.",
     bullets: [
