@@ -63,10 +63,6 @@ function Hero() {
           transition={{ duration: 0.6 }}
           className="max-w-3xl"
         >
-          <div className="inline-flex items-center gap-2 px-2.5 py-1 border border-border rounded-full text-[10px] uppercase tracking-widest text-muted-foreground mb-6">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-            v1.0
-          </div>
           <h1 className="text-5xl md:text-7xl font-sans font-medium tracking-tight leading-[1.05] text-foreground">
             Make your <span className="bg-gradient-to-r from-primary via-p2 to-p5 bg-clip-text text-transparent">Hero Products</span> the most-cited on AI
           </h1>
