@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { motion } from "framer-motion";
-import { ArrowRight, ShieldCheck, Cpu, Lock, Sparkles, Activity, CheckCircle2, XCircle, Mic } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowRight, ShieldCheck, Cpu, Lock, Sparkles, Activity, CheckCircle2, XCircle, Mic, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { BRAND } from "@/lib/branding";
+import { PILLARS, FAILURE_CATALOG } from "@/lib/epiphan-data";
 
 export const Route = createFileRoute("/")({
   head: () => ({
