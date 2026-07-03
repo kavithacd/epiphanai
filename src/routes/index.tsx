@@ -2,14 +2,17 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { ArrowRight, ShieldCheck, Cpu, Lock, Sparkles, Activity, CheckCircle2, XCircle, Mic } from "lucide-react";
 import { useState } from "react";
+import { BRAND } from "@/lib/branding";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Shine — Make Hero Products the most-cited on AI" },
-      { name: "description", content: "Identify why your products aren't cited on generative engines and heal your content to become top-cited on LLMs." },
-      { property: "og:title", content: "Shine — Make Hero Products the most-cited on AI" },
-      { property: "og:description", content: "Identify why your products aren't cited on generative engines and heal your content to become top-cited on LLMs." },
+      { title: `${BRAND.name} — ${BRAND.tagline}` },
+      { name: "description", content: BRAND.description },
+      { property: "og:title", content: `${BRAND.name} — ${BRAND.tagline}` },
+      { property: "og:description", content: BRAND.description },
+      { name: "twitter:title", content: `${BRAND.name} — ${BRAND.tagline}` },
+      { name: "twitter:description", content: BRAND.description },
     ],
   }),
   component: Landing,
