@@ -1,14 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Check, Sparkles, ArrowRight } from "lucide-react";
 import { PRICING_TIERS } from "@/lib/plan";
+import { BRAND, seoTitle } from "@/lib/branding";
 
 export const Route = createFileRoute("/pricing")({
   head: () => ({
     meta: [
-      { title: "Pricing · Shine" },
-      { name: "description", content: "Audit Engine, Brand Monitoring, or both. Starter from €25/mo, Pro from €100/mo. EU billing." },
-      { property: "og:title", content: "Pricing · Shine" },
-      { property: "og:description", content: "Audit Engine, Brand Monitoring, or both. Starter from €25/mo, Pro from €100/mo." },
+      { title: seoTitle("Pricing") },
+      { name: "description", content: `Audit Engine, Brand Monitoring, or both on ${BRAND.name}. Starter from €25/mo, Pro from €100/mo. EU billing.` },
+      { property: "og:title", content: seoTitle("Pricing") },
+      { property: "og:description", content: `Audit Engine, Brand Monitoring, or both on ${BRAND.name}. Starter from €25/mo, Pro from €100/mo.` },
     ],
   }),
   component: PricingPage,
@@ -79,7 +80,7 @@ function PricingPage() {
               </ul>
               {t.id === "enterprise" ? (
                 <a
-                  href="mailto:sales@epiphanai.eu?subject=Enterprise%20enquiry"
+                  href="mailto:sales@shine.ai?subject=Enterprise%20enquiry"
                   className="mt-4 px-4 py-2 rounded border border-border text-xs text-center hover:border-primary"
                 >
                   Talk to sales
@@ -93,7 +94,7 @@ function PricingPage() {
                 </Link>
               ) : (
                 <button
-                  onClick={() => alert("Checkout is not wired yet. Drop us a line at sales@epiphanai.eu and we'll get you onboarded.")}
+                  onClick={() => alert("Checkout is not wired yet. Drop us a line at sales@shine.ai and we'll get you onboarded.")}
                   className={`mt-4 px-4 py-2 rounded text-xs ${
                     t.highlight
                       ? "bg-primary text-primary-foreground"
@@ -110,7 +111,7 @@ function PricingPage() {
 
         <div className="mt-10 text-center text-[11px] text-muted-foreground">
           Need a custom volume, on-prem deployment, or to bundle both workflows above Pro limits?
-          <a href="mailto:sales@epiphanai.eu" className="text-primary hover:underline ml-1">
+          <a href="mailto:sales@shine.ai" className="text-primary hover:underline ml-1">
             Talk to sales →
           </a>
         </div>

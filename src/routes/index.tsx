@@ -2,14 +2,17 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { ArrowRight, ShieldCheck, Cpu, Lock, Sparkles, Activity, CheckCircle2, XCircle, Mic } from "lucide-react";
 import { useState } from "react";
+import { BRAND } from "@/lib/branding";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Shine — Make Hero Products the most-cited on AI" },
-      { name: "description", content: "Identify why your products aren't cited on generative engines and heal your content to become top-cited on LLMs." },
-      { property: "og:title", content: "Shine — Make Hero Products the most-cited on AI" },
-      { property: "og:description", content: "Identify why your products aren't cited on generative engines and heal your content to become top-cited on LLMs." },
+      { title: `${BRAND.name} — ${BRAND.tagline}` },
+      { name: "description", content: BRAND.description },
+      { property: "og:title", content: `${BRAND.name} — ${BRAND.tagline}` },
+      { property: "og:description", content: BRAND.description },
+      { name: "twitter:title", content: `${BRAND.name} — ${BRAND.tagline}` },
+      { name: "twitter:description", content: BRAND.description },
     ],
   }),
   component: Landing,
@@ -36,10 +39,10 @@ function TopNav() {
           <div className="w-7 h-7 rounded bg-primary/15 border border-primary/40 grid place-items-center">
             <Sparkles className="w-4 h-4 text-primary" />
           </div>
-          <div className="font-semibold tracking-tight">Shine</div>
+          <div className="font-semibold tracking-tight">{BRAND.name}</div>
         </Link>
         <nav className="hidden md:flex items-center gap-6 text-xs text-muted-foreground">
-          <a href="#pillars" className="hover:text-foreground">Visibility Taxonomy</a>
+          <a href="#pillars" className="hover:text-foreground">{BRAND.visibilityTaxonomyLabel}</a>
           <Link to="/dashboard" className="px-3 py-1.5 rounded bg-primary text-primary-foreground hover:opacity-90 inline-flex items-center gap-1.5 text-xs">
             Open Console <ArrowRight className="w-3 h-3" />
           </Link>
@@ -60,10 +63,6 @@ function Hero() {
           transition={{ duration: 0.6 }}
           className="max-w-3xl"
         >
-          <div className="inline-flex items-center gap-2 px-2.5 py-1 border border-border rounded-full text-[10px] uppercase tracking-widest text-muted-foreground mb-6">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-            v1.0
-          </div>
           <h1 className="text-5xl md:text-7xl font-sans font-medium tracking-tight leading-[1.05] text-foreground">
             Make your <span className="bg-gradient-to-r from-primary via-p2 to-p5 bg-clip-text text-transparent">Hero Products</span> the most-cited on AI
           </h1>
@@ -84,7 +83,7 @@ function Hero() {
           <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-px bg-border max-w-3xl">
             {[
               ["0%", "Hallucination rate"],
-              ["≥96%", "Visibility Taxonomy routing"],
+              ["≥96%", `${BRAND.visibilityTaxonomyLabel} routing`],
               ["<60min", "Audit → report"],
               ["100%", "Schema.org pass"],
             ].map(([n, l]) => (
@@ -114,7 +113,7 @@ function Pillars() {
       <div className="max-w-7xl mx-auto px-6">
         <div className="grid md:grid-cols-3 gap-12 mb-12">
           <div className="md:col-span-1">
-            <div className="text-[10px] uppercase tracking-widest text-primary mb-3">Visibility Taxonomy</div>
+            <div className="text-[10px] uppercase tracking-widest text-primary mb-3">{BRAND.visibilityTaxonomyLabel}</div>
             <h2 className="text-3xl font-sans font-medium leading-tight">The five pillars that decide whether AI cites you.</h2>
           </div>
           <p className="md:col-span-2 text-muted-foreground leading-relaxed text-base">
@@ -274,7 +273,7 @@ function Footer() {
   return (
     <footer className="py-10 text-xs text-muted-foreground">
       <div className="max-w-7xl mx-auto px-6 flex flex-wrap gap-4 items-center justify-between">
-        <div>© 2026 Shine v1.0</div>
+        <div>© {new Date().getFullYear()} {BRAND.name}</div>
       </div>
     </footer>
   );

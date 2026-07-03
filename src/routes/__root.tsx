@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 
 import { Toaster } from "@/components/ui/sonner";
+import { BRAND } from "@/lib/branding";
 import appCss from "../styles.css?url";
 
 
@@ -74,18 +75,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Shine autonomously audits and remediates e-commerce GEO failures." },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Shine autonomously audits and remediates e-commerce GEO failures." },
+      { title: `${BRAND.name} — ${BRAND.tagline}` },
+      { name: "description", content: BRAND.description },
+      { name: "author", content: BRAND.name },
+      { property: "og:title", content: `${BRAND.name} — ${BRAND.tagline}` },
+      { property: "og:description", content: BRAND.description },
+      { property: "og:site_name", content: BRAND.name },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "Lovable App" },
-      { name: "twitter:description", content: "Shine autonomously audits and remediates e-commerce GEO failures." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/fe3a2592-4abd-416e-b441-bcfce216693c/id-preview-c131ea42--957296e7-0921-42df-b133-18349ecf35ef.lovable.app-1779439793658.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/fe3a2592-4abd-416e-b441-bcfce216693c/id-preview-c131ea42--957296e7-0921-42df-b133-18349ecf35ef.lovable.app-1779439793658.png" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:site", content: BRAND.twitterHandle },
+      { name: "twitter:title", content: `${BRAND.name} — ${BRAND.tagline}` },
+      { name: "twitter:description", content: BRAND.description },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
