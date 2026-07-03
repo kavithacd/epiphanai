@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 
 import { Toaster } from "@/components/ui/sonner";
+import { BRAND } from "@/lib/branding";
 import appCss from "../styles.css?url";
 
 
