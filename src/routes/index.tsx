@@ -83,7 +83,7 @@ function Hero() {
           <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-px bg-border max-w-3xl">
             {[
               ["0%", "Hallucination rate"],
-              ["≥96%", "Visibility Taxonomy routing"],
+              ["≥96%", `${BRAND.visibilityTaxonomyLabel} routing`],
               ["<60min", "Audit → report"],
               ["100%", "Schema.org pass"],
             ].map(([n, l]) => (
