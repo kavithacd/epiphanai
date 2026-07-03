@@ -113,7 +113,7 @@ function Pillars() {
       <div className="max-w-7xl mx-auto px-6">
         <div className="grid md:grid-cols-3 gap-12 mb-12">
           <div className="md:col-span-1">
-            <div className="text-[10px] uppercase tracking-widest text-primary mb-3">Visibility Taxonomy</div>
+            <div className="text-[10px] uppercase tracking-widest text-primary mb-3">{BRAND.visibilityTaxonomyLabel}</div>
             <h2 className="text-3xl font-sans font-medium leading-tight">The five pillars that decide whether AI cites you.</h2>
           </div>
           <p className="md:col-span-2 text-muted-foreground leading-relaxed text-base">
