@@ -273,7 +273,7 @@ function Footer() {
   return (
     <footer className="py-10 text-xs text-muted-foreground">
       <div className="max-w-7xl mx-auto px-6 flex flex-wrap gap-4 items-center justify-between">
-        <div>© 2026 Shine v1.0</div>
+        <div>© {new Date().getFullYear()} {BRAND.name}</div>
       </div>
     </footer>
   );
