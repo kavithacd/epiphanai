@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { motion } from "framer-motion";
-import { ArrowRight, ShieldCheck, Cpu, Lock, Sparkles, Activity, CheckCircle2, XCircle, Mic } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowRight, ShieldCheck, Cpu, Lock, Sparkles, Activity, CheckCircle2, XCircle, Mic, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { BRAND } from "@/lib/branding";
+import { PILLARS, FAILURE_CATALOG } from "@/lib/epiphan-data";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -99,44 +100,147 @@ function Hero() {
   );
 }
 
-const PILLAR_META = [
-  { id: "P1", name: "Technical Accessibility", color: "var(--color-p1)", ex: "llms.txt · robots.txt · TTFB · JS rendering" },
-  { id: "P2", name: "Structured Content", color: "var(--color-p2)", ex: "Product JSON-LD · Breadcrumb · Organization" },
-  { id: "P3", name: "Context Density & Copy", color: "var(--color-p3)", ex: "Word count · FAQ schema · scenario language" },
-  { id: "P4", name: "Image & Multimodal", color: "var(--color-p4)", ex: "Alt-text · image schema · WebP" },
-  { id: "P5", name: "Brand Sentiment / SoV", color: "var(--color-p5)", ex: "Share of voice · competitor citations" },
-];
+const PILLAR_BLURB: Record<string, string> = {
+  P1: "Crawlability signals — llms.txt, robots, TTFB, JS rendering — that determine whether AI agents can even reach your pages.",
+  P2: "Machine-readable structure — Product, Breadcrumb, Organization JSON-LD — that lets LLMs parse your catalog reliably.",
+  P3: "Depth, scenario language, and FAQ coverage that give AI enough context to cite your product over a competitor's.",
+  P4: "Alt-text, image schema, and format hygiene that make your visuals legible to multimodal models.",
+  P5: "Share of voice and sentiment across ChatGPT, Perplexity, and Gemini — the outcome layer of the taxonomy.",
+};
+
+const SEVERITY_STYLES: Record<string, string> = {
+  CRITICAL: "bg-sev-critical/10 text-sev-critical border-sev-critical/30",
+  HIGH: "bg-sev-high/10 text-sev-high border-sev-high/30",
+  MEDIUM: "bg-sev-medium/10 text-sev-medium border-sev-medium/30",
+  LOW: "bg-sev-low/10 text-sev-low border-sev-low/30",
+};
 
 function Pillars() {
+  const [openId, setOpenId] = useState<string | null>(null);
   return (
     <section id="pillars" className="border-b border-border py-20">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="grid md:grid-cols-3 gap-12 mb-12">
+        <div className="grid md:grid-cols-3 gap-12 mb-10">
           <div className="md:col-span-1">
             <div className="text-[10px] uppercase tracking-widest text-primary mb-3">{BRAND.visibilityTaxonomyLabel}</div>
             <h2 className="text-3xl font-sans font-medium leading-tight">The five pillars that decide whether AI cites you.</h2>
           </div>
           <p className="md:col-span-2 text-muted-foreground leading-relaxed text-base">
-            Each failure is classified, scored, and routed to the correct remediation.
+            Every failure Shine detects is classified into one of these pillars, scored, and routed to the correct remediation. Click a pillar to see the failure modes it contains.
           </p>
         </div>
-        <div className="grid md:grid-cols-5 gap-px bg-border border border-border">
-          {PILLAR_META.map((p, i) => (
-            <motion.div key={p.id}
-              initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }} transition={{ delay: i * 0.08 }}
-              className="bg-surface p-5 group hover:bg-surface-elevated transition">
-              <div className="text-2xl font-medium tabular-nums" style={{ color: p.color }}>{p.id}</div>
-              <div className="text-foreground font-medium text-sm mt-2">{p.name}</div>
-              <div className="text-[10px] text-muted-foreground mt-3 leading-relaxed">{p.ex}</div>
-              <div className="mt-4 h-0.5 w-6 transition-all group-hover:w-full" style={{ background: p.color }} />
-            </motion.div>
-          ))}
+
+        <div className="space-y-3">
+          {PILLARS.map((p, i) => {
+            const failures = FAILURE_CATALOG.filter((f) => f.pillar === p.id);
+            const isOpen = openId === p.id;
+            return (
+              <motion.div
+                key={p.id}
+                initial={{ opacity: 0, y: 8 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.05 }}
+                className="border border-border rounded-lg bg-surface overflow-hidden"
+              >
+                <button
+                  type="button"
+                  onClick={() => setOpenId(isOpen ? null : p.id)}
+                  aria-expanded={isOpen}
+                  aria-controls={`pillar-panel-${p.id}`}
+                  className="w-full flex items-center gap-4 p-5 text-left hover:bg-surface-elevated transition"
+                >
+                  <div
+                    className="text-lg font-medium tabular-nums w-10 shrink-0"
+                    style={{ color: p.color }}
+                  >
+                    {p.id}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-foreground font-medium text-sm">{p.name}</div>
+                    <div className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                      {PILLAR_BLURB[p.id]}
+                    </div>
+                  </div>
+                  <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground shrink-0">
+                    <span className="tabular-nums">{failures.length}</span>
+                    <span>failure modes</span>
+                  </div>
+                  <ChevronDown
+                    className="w-4 h-4 text-muted-foreground shrink-0 transition-transform"
+                    style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+                  />
+                </button>
+
+                <AnimatePresence initial={false}>
+                  {isOpen && (
+                    <motion.div
+                      id={`pillar-panel-${p.id}`}
+                      key="content"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <div
+                        className="border-t border-border"
+                        style={{ borderTopColor: p.color, borderTopWidth: 2 }}
+                      >
+                        <ul className="divide-y divide-border">
+                          {failures.map((f) => (
+                            <li key={f.failureId} className="p-4 sm:p-5 flex items-start gap-4">
+                              <span
+                                className="text-[11px] font-mono tabular-nums text-muted-foreground w-12 shrink-0 pt-0.5"
+                              >
+                                {f.failureId}
+                              </span>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="text-sm font-medium text-foreground">
+                                    {f.failureName}
+                                  </span>
+                                  <span
+                                    className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded border ${SEVERITY_STYLES[f.severity] ?? ""}`}
+                                  >
+                                    {f.severity}
+                                  </span>
+                                  {f.isAutofixable && (
+                                    <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded border border-primary/30 bg-primary/10 text-primary">
+                                      Auto-fixable
+                                    </span>
+                                  )}
+                                  {f.requiresHuman && (
+                                    <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded border border-border text-muted-foreground">
+                                      Review queue
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                                  {f.detail}
+                                </p>
+                              </div>
+                            </li>
+                          ))}
+                          {failures.length === 0 && (
+                            <li className="p-5 text-xs text-muted-foreground">
+                              No failure modes catalogued yet for this pillar.
+                            </li>
+                          )}
+                        </ul>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            );
+          })}
         </div>
       </div>
     </section>
   );
 }
+
 
 function BeforeAfter() {
   const [pos, setPos] = useState(45);
