@@ -39,10 +39,10 @@ function TopNav() {
           <div className="w-7 h-7 rounded bg-primary/15 border border-primary/40 grid place-items-center">
             <Sparkles className="w-4 h-4 text-primary" />
           </div>
-          <div className="font-semibold tracking-tight">Shine</div>
+          <div className="font-semibold tracking-tight">{BRAND.name}</div>
         </Link>
         <nav className="hidden md:flex items-center gap-6 text-xs text-muted-foreground">
-          <a href="#pillars" className="hover:text-foreground">Visibility Taxonomy</a>
+          <a href="#pillars" className="hover:text-foreground">{BRAND.visibilityTaxonomyLabel}</a>
           <Link to="/dashboard" className="px-3 py-1.5 rounded bg-primary text-primary-foreground hover:opacity-90 inline-flex items-center gap-1.5 text-xs">
             Open Console <ArrowRight className="w-3 h-3" />
           </Link>
