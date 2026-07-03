@@ -1,14 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Check, Sparkles, ArrowRight } from "lucide-react";
 import { PRICING_TIERS } from "@/lib/plan";
+import { BRAND, seoTitle } from "@/lib/branding";
 
 export const Route = createFileRoute("/pricing")({
   head: () => ({
     meta: [
-      { title: "Pricing · Shine" },
-      { name: "description", content: "Audit Engine, Brand Monitoring, or both. Starter from €25/mo, Pro from €100/mo. EU billing." },
-      { property: "og:title", content: "Pricing · Shine" },
-      { property: "og:description", content: "Audit Engine, Brand Monitoring, or both. Starter from €25/mo, Pro from €100/mo." },
+      { title: seoTitle("Pricing") },
+      { name: "description", content: `Audit Engine, Brand Monitoring, or both on ${BRAND.name}. Starter from €25/mo, Pro from €100/mo. EU billing.` },
+      { property: "og:title", content: seoTitle("Pricing") },
+      { property: "og:description", content: `Audit Engine, Brand Monitoring, or both on ${BRAND.name}. Starter from €25/mo, Pro from €100/mo.` },
     ],
   }),
   component: PricingPage,
