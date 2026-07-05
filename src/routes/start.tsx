@@ -6,9 +6,10 @@ import {
   ArrowRight, ArrowLeft, Sparkles, Store, ShoppingBag, Globe, Plug, Play,
   CheckCircle2, Loader2,
 } from "lucide-react";
+import { seoMeta } from "@/lib/branding";
 
 export const Route = createFileRoute("/start")({
-  head: () => ({ meta: [{ title: "Start an audit · Shine" }] }),
+  head: () => ({ meta: seoMeta("Start an audit", "Kick off a live GEO audit against your storefront.") }),
   component: StartFlow,
 });
 

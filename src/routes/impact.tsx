@@ -6,9 +6,10 @@ import { PILLARS, SEVERITY_WEIGHT } from "@/lib/epiphan-data";
 import { PillarBadge, SeverityBadge } from "@/components/PillarRing";
 import { TrendingUp, Sparkles, ArrowUpRight, Zap } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, CartesianGrid, Tooltip, Cell } from "recharts";
+import { seoMeta } from "@/lib/branding";
 
 export const Route = createFileRoute("/impact")({
-  head: () => ({ meta: [{ title: "Fix Impact · Shine" }] }),
+  head: () => ({ meta: seoMeta("Fix Impact", "Quantify the projected lift from deployed and pending GEO fixes.") }),
   component: ImpactDashboard,
 });
 

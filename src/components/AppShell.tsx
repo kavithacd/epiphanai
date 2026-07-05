@@ -6,6 +6,7 @@ import { useAuthUser, useMyPlan } from "@/hooks/useMyPlan";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { UpgradeDialog } from "@/components/UpgradeDialog";
+import { BRAND } from "@/lib/branding";
 
 type NavReq = "audit" | "monitor" | null;
 const NAV: { to: string; label: string; icon: any; req: NavReq }[] = [
@@ -100,7 +101,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Sparkles className="w-4 h-4 text-primary" />
           </div>
           <div>
-            <div className="text-foreground font-semibold tracking-tight">Shine</div>
+            <div className="text-foreground font-semibold tracking-tight">{BRAND.name}</div>
           </div>
         </Link>
         <nav className="flex-1 p-2 space-y-0.5">
@@ -194,7 +195,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <main className="flex-1 min-w-0 overflow-x-hidden flex flex-col">
         <header className="h-12 border-b border-border bg-surface/60 backdrop-blur flex items-center justify-between px-6 shrink-0">
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
-            {NAV.find((n) => loc.pathname.startsWith(n.to))?.label ?? "Shine"}
+            {NAV.find((n) => loc.pathname.startsWith(n.to))?.label ?? BRAND.name}
           </div>
           {!loc.pathname.startsWith("/monitoring") && (
             <button

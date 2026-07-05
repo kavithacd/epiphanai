@@ -4,9 +4,10 @@ import { Sparkles, Mail, Lock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
+import { seoMeta } from "@/lib/branding";
 
 export const Route = createFileRoute("/auth")({
-  head: () => ({ meta: [{ title: "Sign in · Shine" }] }),
+  head: () => ({ meta: seoMeta("Sign in", "Sign in to your account.") }),
   component: AuthPage,
 });
 

@@ -24,7 +24,7 @@ function PricingPage() {
             <div className="w-7 h-7 rounded bg-primary/15 border border-primary/40 grid place-items-center">
               <Sparkles className="w-4 h-4 text-primary" />
             </div>
-            <div className="font-semibold tracking-tight">Shine</div>
+            <div className="font-semibold tracking-tight">{BRAND.name}</div>
           </Link>
           <nav className="flex items-center gap-4 text-xs">
             <Link to="/auth" className="text-muted-foreground hover:text-foreground">Sign in</Link>
@@ -80,7 +80,7 @@ function PricingPage() {
               </ul>
               {t.id === "enterprise" ? (
                 <a
-                  href="mailto:sales@shine.ai?subject=Enterprise%20enquiry"
+                  href={`mailto:${BRAND.contactEmail}?subject=Enterprise%20enquiry`}
                   className="mt-4 px-4 py-2 rounded border border-border text-xs text-center hover:border-primary"
                 >
                   Talk to sales
@@ -94,7 +94,7 @@ function PricingPage() {
                 </Link>
               ) : (
                 <button
-                  onClick={() => alert("Checkout is not wired yet. Drop us a line at sales@shine.ai and we'll get you onboarded.")}
+                  onClick={() => alert(`Checkout is not wired yet. Drop us a line at ${BRAND.contactEmail} and we'll get you onboarded.`)}
                   className={`mt-4 px-4 py-2 rounded text-xs ${
                     t.highlight
                       ? "bg-primary text-primary-foreground"
@@ -111,7 +111,7 @@ function PricingPage() {
 
         <div className="mt-10 text-center text-[11px] text-muted-foreground">
           Need a custom volume, on-prem deployment, or to bundle both workflows above Pro limits?
-          <a href="mailto:sales@shine.ai" className="text-primary hover:underline ml-1">
+          <a href={`mailto:${BRAND.contactEmail}`} className="text-primary hover:underline ml-1">
             Talk to sales →
           </a>
         </div>
