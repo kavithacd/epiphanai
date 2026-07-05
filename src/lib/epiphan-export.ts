@@ -2,6 +2,7 @@
 // adapter can be swapped for a real API client without touching call sites.
 
 import { Failure, describeFix, PillarId } from "./epiphan-data";
+import { BRAND } from "./branding";
 
 export type IntegrationConfig = {
   slackWebhook: string;
@@ -52,7 +53,7 @@ export const PLATFORM_LABEL: Record<PlatformId, string> = {
 
 export function toWebhookPayload(failures: Failure[]) {
   return {
-    source: "Shine",
+    source: BRAND.name,
     version: "1.0",
     deployedAt: new Date().toISOString(),
     count: failures.length,
@@ -177,7 +178,7 @@ export function buildPlatformRequest(
         url: cfg.slackWebhook || "https://hooks.slack.com/services/T000/B000/XXX",
         headers: { "Content-Type": "application/json" },
         body: {
-          text: `:rotating_light: Shine · ${failures.length} GEO fix${failures.length === 1 ? "" : "es"} deployed`,
+          text: `:rotating_light: ${BRAND.name} · ${failures.length} GEO fix${failures.length === 1 ? "" : "es"} deployed`,
           blocks: failures.slice(0, 5).map((f) => {
             const d = describeFix(f);
             return {

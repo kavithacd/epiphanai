@@ -8,10 +8,11 @@ import { nextBrandMonitorRefresh } from "@/lib/epiphan-store";
 import { mulberry32, hashStr, seededInt, resolveProbeQuery } from "@/lib/epiphan-data";
 import { Radio, ChevronDown, ChevronRight, ExternalLink, Download, X, Copy, Check, Settings as SettingsIcon, SlidersHorizontal, RefreshCw } from "lucide-react";
 import { useMyPlan } from "@/hooks/useMyPlan";
+import { seoMeta } from "@/lib/branding";
 
 
 export const Route = createFileRoute("/monitoring")({
-  head: () => ({ meta: [{ title: "Brand Monitoring · Shine" }] }),
+  head: () => ({ meta: seoMeta("Brand Monitoring", "Track share of voice, citations, and sentiment across ChatGPT, Perplexity, and Gemini.") }),
   component: BrandMonitoring,
 });
 

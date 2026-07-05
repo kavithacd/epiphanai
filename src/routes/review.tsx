@@ -15,10 +15,11 @@ import {
   PLATFORM_LABEL, PlatformId, isPlatformConfigured,
 } from "@/lib/epiphan-export";
 import { toast } from "sonner";
+import { BRAND, seoMeta } from "@/lib/branding";
 
 
 export const Route = createFileRoute("/review")({
-  head: () => ({ meta: [{ title: "Review Queue · Shine" }] }),
+  head: () => ({ meta: seoMeta("Review Queue", "Approve, edit, or reject AI-generated fixes before they deploy.") }),
   component: ReviewQueue,
 });
 
@@ -61,7 +62,7 @@ function ReviewQueue() {
   const copyWebhook = async () => {
     const target = selectedItems.length ? selectedItems : items;
     await copyToClipboard(JSON.stringify(toWebhookPayload(target), null, 2));
-    toast.success("Webhook payload copied", { description: "Standard Shine envelope on your clipboard." });
+    toast.success("Webhook payload copied", { description: `Standard ${BRAND.name} envelope on your clipboard.` });
   };
   const applyBulk = () => {
     if (selectedItems.length === 0) return;

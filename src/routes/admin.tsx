@@ -4,9 +4,10 @@ import { AppShell } from "@/components/AppShell";
 import { useEpiphan } from "@/lib/epiphan-store";
 import { MODEL_MATRIX, PILLARS, Failure, Fix, mulberry32 } from "@/lib/epiphan-data";
 import { Cpu, ShieldCheck, ShieldAlert, Lock, Activity, Coins, ThumbsUp, ThumbsDown, Microscope } from "lucide-react";
+import { seoMeta } from "@/lib/branding";
 
 export const Route = createFileRoute("/admin")({
-  head: () => ({ meta: [{ title: "Admin Cockpit · Shine" }] }),
+  head: () => ({ meta: [...seoMeta("Admin Cockpit", "Internal observability, guardrails, and eval traces."), { name: "robots", content: "noindex" }] }),
   component: Admin,
 });
 

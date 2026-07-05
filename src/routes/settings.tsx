@@ -4,9 +4,10 @@ import { useEpiphan, EVAL_THRESHOLD_META } from "@/lib/epiphan-store";
 import { useState } from "react";
 import { Save, Webhook, Slack as SlackIcon, ShoppingBag, Globe, Database, Layers, Zap, ShieldCheck } from "lucide-react";
 import { IntegrationConfig } from "@/lib/epiphan-export";
+import { seoMeta } from "@/lib/branding";
 
 export const Route = createFileRoute("/settings")({
-  head: () => ({ meta: [{ title: "Settings · Shine" }] }),
+  head: () => ({ meta: seoMeta("Settings", "Configure integrations, eval thresholds, and brand monitoring.") }),
   component: Settings,
 });
 

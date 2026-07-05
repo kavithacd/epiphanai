@@ -9,9 +9,10 @@ import { FixStatusPill } from "@/components/StatusPills";
 import { FileDown, Trash2, ChevronRight, Wand2, FileText, FileJson } from "lucide-react";
 import { toCsv, toJson, downloadFile } from "@/lib/epiphan-export";
 import { toast } from "sonner";
+import { seoMeta } from "@/lib/branding";
 
 export const Route = createFileRoute("/history")({
-  head: () => ({ meta: [{ title: "Audit History · Shine" }] }),
+  head: () => ({ meta: seoMeta("Audit History", "Browse past audits and re-export failure reports.") }),
   component: History,
 });
 

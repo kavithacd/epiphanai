@@ -12,10 +12,11 @@ import { toast } from "sonner";
 import { FixStatusPill } from "@/components/StatusPills";
 import { useMyPlan, useIncrementAudit } from "@/hooks/useMyPlan";
 import { UpgradeDialog } from "@/components/UpgradeDialog";
+import { seoMeta } from "@/lib/branding";
 
 
 export const Route = createFileRoute("/dashboard")({
-  head: () => ({ meta: [{ title: "Audit Engine · Shine" }] }),
+  head: () => ({ meta: seoMeta("Audit Engine", "Run a live GEO audit and route failures through the Visibility Taxonomy.") }),
   component: Dashboard,
 });
 
