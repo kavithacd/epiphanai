@@ -44,6 +44,8 @@ function TopNav() {
         </Link>
         <nav className="hidden md:flex items-center gap-6 text-xs text-muted-foreground">
           <a href="#pillars" className="hover:text-foreground">{BRAND.visibilityTaxonomyLabel}</a>
+          <Link to="/pricing" className="hover:text-foreground">Pricing</Link>
+          <Link to="/compare" className="hover:text-foreground">Compare</Link>
           <Link to="/dashboard" className="px-3 py-1.5 rounded bg-primary text-primary-foreground hover:opacity-90 inline-flex items-center gap-1.5 text-xs">
             Open Console <ArrowRight className="w-3 h-3" />
           </Link>
