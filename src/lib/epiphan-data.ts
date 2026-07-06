@@ -196,7 +196,7 @@ export const FAILURE_CATALOG: Omit<Failure, "id" | "auditId" | "status" | "detec
   { pillar: "P1", failureId: "F1.1", failureName: "Missing llms.txt", severity: "CRITICAL", detail: "No /llms.txt manifest detected. AI crawlers cannot discover content priorities.", isAutofixable: true, requiresHuman: false },
   { pillar: "P1", failureId: "F1.2", failureName: "GPTBot blocked in robots.txt", severity: "CRITICAL", detail: "User-agent GPTBot is explicitly disallowed from /. Store is invisible to ChatGPT search.", isAutofixable: true, requiresHuman: false },
   { pillar: "P1", failureId: "F1.3", failureName: "Slow TTFB (3.2s)", severity: "HIGH", detail: "Time to first byte exceeds 2000ms threshold. AI crawlers will time out.", isAutofixable: false, requiresHuman: true },
-  { pillar: "P1", failureId: "F1.5", failureName: "Missing canonical tags", severity: "MEDIUM", detail: "12 product pages lack rel=canonical declarations.", isAutofixable: true, requiresHuman: false },
+  { pillar: "P1", failureId: "F1.4", failureName: "Missing canonical tags", severity: "MEDIUM", detail: "12 product pages lack rel=canonical declarations.", isAutofixable: true, requiresHuman: false },
   { pillar: "P2", failureId: "F2.1", failureName: "No Product JSON-LD", severity: "CRITICAL", detail: "Product schema markup absent from all product pages.", isAutofixable: true, requiresHuman: false },
   { pillar: "P2", failureId: "F2.2", failureName: "Invalid BreadcrumbList", severity: "HIGH", detail: "Breadcrumb schema present but missing required 'position' fields.", isAutofixable: true, requiresHuman: false },
   { pillar: "P2", failureId: "F2.3", failureName: "Missing Organization schema", severity: "MEDIUM", detail: "Root domain lacks Organization JSON-LD with sameAs links.", isAutofixable: true, requiresHuman: false },
@@ -206,7 +206,7 @@ export const FAILURE_CATALOG: Omit<Failure, "id" | "auditId" | "status" | "detec
   { pillar: "P3", failureId: "F3.3", failureName: "No scenario content", severity: "MEDIUM", detail: "Descriptions lack 'best for X' and use-case language.", isAutofixable: false, requiresHuman: true },
   { pillar: "P4", failureId: "F4.1", failureName: "Missing alt-text", severity: "HIGH", detail: "Product images have empty alt attributes.", isAutofixable: true, requiresHuman: true },
   { pillar: "P4", failureId: "F4.2", failureName: "Generic alt-text (DSC_*)", severity: "MEDIUM", detail: "Images use filename-style alt text (e.g. 'IMG_4521').", isAutofixable: true, requiresHuman: true },
-  { pillar: "P4", failureId: "F4.4", failureName: "Non-WebP assets", severity: "LOW", detail: "Product images served as JPEG. Larger payload, slower indexing.", isAutofixable: true, requiresHuman: false },
+  { pillar: "P4", failureId: "F4.3", failureName: "Non-WebP assets", severity: "LOW", detail: "Product images served as JPEG. Larger payload, slower indexing.", isAutofixable: true, requiresHuman: false },
   { pillar: "P5", failureId: "F5.1", failureName: "Zero brand citations", severity: "CRITICAL", detail: "Brand not cited in any of 10 category probe queries via ChatGPT.", isAutofixable: false, requiresHuman: true },
   { pillar: "P5", failureId: "F5.2", failureName: "Competitor dominance", severity: "HIGH", detail: "Top competitor cited in 8/10 AI answers. Share of voice: 0%.", isAutofixable: false, requiresHuman: true },
 ];
@@ -494,14 +494,14 @@ Available in ${ctx.primaryColor === "—" ? "multiple finishes" : ctx.primaryCol
         before: `<img src="..." alt="IMG_4521.jpg">`,
         after: `<img src="..." alt="${ctx.imageDesc}">`,
       };
-    case "F1.5":
+    case "F1.4":
       return {
         type: "canonical",
         model: "phi4",
         before: "// 12 product pages: no canonical link.",
         after: `<link rel="canonical" href="${baseUrl}/products/${ctx.handle}" />`,
       };
-    case "F4.4":
+    case "F4.3":
       return {
         type: "image_format",
         model: "phi4",
@@ -525,7 +525,7 @@ export function describeFix(f: Pick<Failure, "failureId" | "failureName" | "pill
   switch (f.failureId) {
     case "F1.1": return { title: "llms.txt manifest published", detail: `Created /llms.txt for ${ctx.brand} with prioritized URLs (homepage, ${ctx.taxonomy.slice(0, 2).join(", ")}, policies).` };
     case "F1.2": return { title: "robots.txt opened to AI crawlers", detail: "Allowed GPTBot, OAI-SearchBot, PerplexityBot and ClaudeBot. Previous Disallow rule snapshot stored." };
-    case "F1.5": return { title: "Canonical tags injected", detail: `Added rel=canonical for ${ctx.productName} (SKU ${ctx.sku}) and 11 sibling product pages.` };
+    case "F1.4": return { title: "Canonical tags injected", detail: `Added rel=canonical for ${ctx.productName} (SKU ${ctx.sku}) and 11 sibling product pages.` };
     case "F2.1": return { title: "Product JSON-LD deployed", detail: `Injected schema.org/Product markup for ${ctx.productName} — name, sku, price (${ctx.currency} ${ctx.price}), brand, offers, aggregateRating.` };
     case "F2.2": return { title: "BreadcrumbList repaired", detail: `Added required position fields (1→Home, 2→${ctx.category}, 3→${ctx.productName}) and absolute item URLs.` };
     case "F2.3": return { title: "Organization schema added", detail: `Published Organization JSON-LD for ${ctx.brand} with logo and sameAs links.` };
@@ -535,7 +535,7 @@ export function describeFix(f: Pick<Failure, "failureId" | "failureName" | "pill
     case "F3.3": return { title: "Scenario language added", detail: `Inserted 'best for…' use-cases and competitor comparisons into ${ctx.productName} copy.` };
     case "F4.1": return { title: `Alt-text generated for ${ctx.brand} images`, detail: `Vision model wrote descriptive alt text — colour, material, ${ctx.category} type, setting.` };
     case "F4.2": return { title: "Generic filename alts replaced", detail: `Replaced 47 'IMG_*.jpg' alt strings with descriptive text from vision model for ${ctx.brand} catalog.` };
-    case "F4.4": return { title: "Images converted to WebP", detail: "All product imagery re-encoded to WebP — average 71% size reduction (412KB → 118KB)." };
+    case "F4.3": return { title: "Images converted to WebP", detail: "All product imagery re-encoded to WebP — average 71% size reduction (412KB → 118KB)." };
     case "F5.1":
     case "F5.2": return { title: "SoV remediation plan queued", detail: `Probe results stored; outreach + content roadmap drafted for ${ctx.brand} vs category competitors.` };
     default: return { title: `${f.failureName} resolved`, detail: "Fix deployed to the live store." };
