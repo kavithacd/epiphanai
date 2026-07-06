@@ -784,7 +784,7 @@ function StorePreview({ audit }: { audit: ReturnType<typeof useEpiphan.getState>
   const sov = healed("F5.1")
     ? `Cited in ${sovHealedCount}/${enabledProbeCount} probes${enginesLabel}`
     : `Cited in 0/${enabledProbeCount} probes${enginesLabel}`;
-  const imageFmt = healed("F4.4") ? `${ctx.handle}.webp · 118 KB` : `${ctx.handle}.jpg · 412 KB`;
+  const imageFmt = healed("F4.3") ? `${ctx.handle}.webp · 118 KB` : `${ctx.handle}.jpg · 412 KB`;
   const descBefore = `${ctx.productName}. ${ctx.material === "—" ? "Available now." : ctx.material + "."}`;
   const descAfter = `${ctx.material === "—" ? ctx.productName : ctx.material} — ${ctx.productName} is engineered for the way ${ctx.industry.toLowerCase()} customers actually use it: built to last, easy to care for, and grounded in real provenance. Best for everyday use and as a long-term staple in the ${ctx.category.toLowerCase()} category. Available in ${ctx.primaryColor === "—" ? "multiple finishes" : ctx.primaryColor + " and complementary tones"}. Designed and quality-controlled by ${ctx.brand}.`;
   const desc = healed("F3.1") ? descAfter : descBefore;
@@ -839,7 +839,7 @@ function StorePreview({ audit }: { audit: ReturnType<typeof useEpiphan.getState>
             <div className="mt-3 flex items-center gap-2 text-[10px] text-muted-foreground">
               <span className={`tabular-nums ${healed("F3.1") ? "text-sev-low" : "text-sev-critical"}`}>{wordCount} words</span>
               <span>·</span>
-              <span className={healed("F4.4") ? "text-sev-low" : "text-muted-foreground"}>{imageFmt}</span>
+              <span className={healed("F4.3") ? "text-sev-low" : "text-muted-foreground"}>{imageFmt}</span>
             </div>
             <div className="mt-3 border-t border-border pt-2 text-[10px]">
               <span className="text-muted-foreground">alt=</span>
@@ -854,7 +854,7 @@ function StorePreview({ audit }: { audit: ReturnType<typeof useEpiphan.getState>
           <Row label="llms.txt"   value={llmsTxt}    fixed={healed("F1.1")} present={detected("F1.1")} />
           <Row label="Product schema"    value={jsonLd}     fixed={healed("F2.1")} present={detected("F2.1")} />
           <Row label="Breadcrumb schema" value={breadcrumb} fixed={healed("F2.2")} present={detected("F2.2")} />
-          <Row label="Canonical tags"    value={healed("F1.5") ? "12 canonicals deployed" : "12 product pages missing canonical"} fixed={healed("F1.5")} present={detected("F1.5")} />
+          <Row label="Canonical tags"    value={healed("F1.4") ? "12 canonicals deployed" : "12 product pages missing canonical"} fixed={healed("F1.4")} present={detected("F1.4")} />
           <Row label="Share of voice"    value={sov}        fixed={healed("F5.1")} present={detected("F5.1")} />
         </div>
       </div>
