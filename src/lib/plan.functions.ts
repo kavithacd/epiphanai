@@ -29,6 +29,12 @@ async function ensureProfile(ctx: { supabase: any; userId: string }) {
   return inserted;
 }
 
+// Convert plan limits (which may be Infinity) to an integer suitable for the
+// atomic Postgres RPC. -1 means "no limit".
+function toRpcLimit(n: number): number {
+  return Number.isFinite(n) ? Math.floor(n) : -1;
+}
+
 export const getMyPlan = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<MyPlan> => {
@@ -49,19 +55,19 @@ export const incrementAuditRun = createServerFn({ method: "POST" })
     const ctx = context as any;
     const row = await ensureProfile(ctx);
     const limits = getLimitsFor(row.plan as PlanKind, row.tier as TierKind);
-    const next = (row.audit_runs_used ?? 0) + 1;
-    if (next > limits.auditRuns) {
-      throw new Error("AUDIT_LIMIT_REACHED");
+    const { data: newVal, error } = await ctx.supabase.rpc("increment_audit_run", {
+      _limit: toRpcLimit(limits.auditRuns),
+    });
+    if (error) {
+      if (error.message?.includes("AUDIT_LIMIT_REACHED")) {
+        throw new Error("AUDIT_LIMIT_REACHED");
+      }
+      throw new Error(error.message);
     }
-    const { error } = await ctx.supabase
-      .from("profiles")
-      .update({ audit_runs_used: next })
-      .eq("id", ctx.userId);
-    if (error) throw new Error(error.message);
     return {
       plan: row.plan,
       tier: row.tier,
-      auditRunsUsed: next,
+      auditRunsUsed: newVal ?? (row.audit_runs_used ?? 0) + 1,
       monitorRunsUsed: row.monitor_runs_used ?? 0,
       email: row.email,
       fullName: row.full_name,
@@ -74,20 +80,20 @@ export const incrementMonitorRun = createServerFn({ method: "POST" })
     const ctx = context as any;
     const row = await ensureProfile(ctx);
     const limits = getLimitsFor(row.plan as PlanKind, row.tier as TierKind);
-    const next = (row.monitor_runs_used ?? 0) + 1;
-    if (next > limits.monitorRuns) {
-      throw new Error("MONITOR_LIMIT_REACHED");
+    const { data: newVal, error } = await ctx.supabase.rpc("increment_monitor_run", {
+      _limit: toRpcLimit(limits.monitorRuns),
+    });
+    if (error) {
+      if (error.message?.includes("MONITOR_LIMIT_REACHED")) {
+        throw new Error("MONITOR_LIMIT_REACHED");
+      }
+      throw new Error(error.message);
     }
-    const { error } = await ctx.supabase
-      .from("profiles")
-      .update({ monitor_runs_used: next })
-      .eq("id", ctx.userId);
-    if (error) throw new Error(error.message);
     return {
       plan: row.plan,
       tier: row.tier,
       auditRunsUsed: row.audit_runs_used ?? 0,
-      monitorRunsUsed: next,
+      monitorRunsUsed: newVal ?? (row.monitor_runs_used ?? 0) + 1,
       email: row.email,
       fullName: row.full_name,
     };
