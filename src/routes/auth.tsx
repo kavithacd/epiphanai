@@ -7,13 +7,17 @@ import { lovable } from "@/integrations/lovable/index";
 import { seoMeta } from "@/lib/branding";
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    mode: s.mode === "signup" ? "signup" : "signin",
+  }),
   head: () => ({ meta: seoMeta("Sign in", "Sign in to your account.") }),
   component: AuthPage,
 });
 
 function AuthPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const { mode: initialMode } = Route.useSearch();
+  const [mode, setMode] = useState<"signin" | "signup">(initialMode as "signin" | "signup");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
