@@ -7,13 +7,17 @@ import { lovable } from "@/integrations/lovable/index";
 import { seoMeta } from "@/lib/branding";
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    mode: s.mode === "signup" ? "signup" : "signin",
+  }),
   head: () => ({ meta: seoMeta("Sign in", "Sign in to your account.") }),
   component: AuthPage,
 });
 
 function AuthPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const { mode: initialMode } = Route.useSearch();
+  const [mode, setMode] = useState<"signin" | "signup">(initialMode as "signin" | "signup");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -159,6 +163,14 @@ function AuthPage() {
           </button>
         </form>
 
+        {mode === "signin" && (
+          <div className="mt-3 text-right">
+            <Link to="/forgot-password" className="text-[11px] text-muted-foreground hover:text-foreground">
+              Forgot password?
+            </Link>
+          </div>
+        )}
+
         <div className="mt-4 text-[11px] text-muted-foreground text-center">
           {mode === "signin" ? "New here?" : "Already have an account?"}{" "}
           <button
@@ -169,7 +181,12 @@ function AuthPage() {
           </button>
         </div>
 
-        <div className="mt-6 text-center">
+        <div className="mt-6 text-center text-[10px] text-muted-foreground">
+          By continuing you agree to our{" "}
+          <Link to="/legal/terms" className="hover:text-foreground underline">Terms</Link> and{" "}
+          <Link to="/legal/privacy" className="hover:text-foreground underline">Privacy</Link>.
+        </div>
+        <div className="mt-3 text-center">
           <Link to="/pricing" className="text-[11px] text-muted-foreground hover:text-foreground">
             View pricing →
           </Link>

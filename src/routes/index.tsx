@@ -46,8 +46,9 @@ function TopNav() {
           <a href="#pillars" className="hover:text-foreground">{BRAND.visibilityTaxonomyLabel}</a>
           <Link to="/pricing" className="hover:text-foreground">Pricing</Link>
           <Link to="/compare" className="hover:text-foreground">Compare</Link>
-          <Link to="/dashboard" className="px-3 py-1.5 rounded bg-primary text-primary-foreground hover:opacity-90 inline-flex items-center gap-1.5 text-xs">
-            Open Console <ArrowRight className="w-3 h-3" />
+          <Link to="/auth" className="hover:text-foreground">Sign in</Link>
+          <Link to="/auth" search={{ mode: "signup" }} className="px-3 py-1.5 rounded bg-primary text-primary-foreground hover:opacity-90 inline-flex items-center gap-1.5 text-xs">
+            Get started <ArrowRight className="w-3 h-3" />
           </Link>
         </nav>
       </div>
@@ -73,15 +74,18 @@ function Hero() {
             Identify why your products are not being cited as they should on generative engines. Heal your content to make your brand top-cited on LLMs.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Link to="/start" className="px-5 py-2.5 rounded bg-primary text-primary-foreground hover:opacity-90 inline-flex items-center gap-2 text-sm font-medium">
-              Run a live audit <ArrowRight className="w-4 h-4" />
+            <Link to="/auth" search={{ mode: "signup" }} className="px-5 py-2.5 rounded bg-primary text-primary-foreground hover:opacity-90 inline-flex items-center gap-2 text-sm font-medium">
+              Start free — 2 audits included <ArrowRight className="w-4 h-4" />
             </Link>
-            <Link to="/settings" hash="brand-monitoring" className="px-5 py-2.5 rounded border border-primary/40 bg-primary/8 text-primary hover:bg-primary/15 inline-flex items-center gap-2 text-sm font-medium transition">
-              <Mic className="w-4 h-4" /> Setup brand monitoring
+            <a href="#remediation" className="px-5 py-2.5 rounded border border-primary/40 bg-primary/8 text-primary hover:bg-primary/15 inline-flex items-center gap-2 text-sm font-medium transition">
+              <Mic className="w-4 h-4" /> See the live demo
+            </a>
+            <Link to="/pricing" className="px-5 py-2.5 rounded border border-border hover:bg-accent/30 text-sm">
+              View pricing
             </Link>
-            <Link to="/admin" className="px-5 py-2.5 rounded border border-border hover:bg-accent/30 text-sm">
-              Admin cockpit
-            </Link>
+          </div>
+          <div className="mt-4 text-[11px] text-muted-foreground">
+            No credit card. Free plan forever · <Link to="/auth" className="text-primary hover:underline">Sign in</Link>
           </div>
           <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-px bg-border max-w-3xl">
             {[
@@ -378,8 +382,16 @@ function Pillar({ icon, title, body }: { icon: React.ReactNode; title: string; b
 function Footer() {
   return (
     <footer className="py-10 text-xs text-muted-foreground">
-      <div className="max-w-7xl mx-auto px-6 flex flex-wrap gap-4 items-center justify-between">
+      <div className="max-w-7xl mx-auto px-6 flex flex-wrap gap-6 items-center justify-between">
         <div>© {new Date().getFullYear()} {BRAND.name}</div>
+        <div className="flex flex-wrap gap-5">
+          <Link to="/pricing" className="hover:text-foreground">Pricing</Link>
+          <Link to="/compare" className="hover:text-foreground">Compare</Link>
+          <Link to="/auth" className="hover:text-foreground">Sign in</Link>
+          <Link to="/legal/terms" className="hover:text-foreground">Terms</Link>
+          <Link to="/legal/privacy" className="hover:text-foreground">Privacy</Link>
+          <a href={`mailto:${BRAND.supportEmail}`} className="hover:text-foreground">Contact</a>
+        </div>
       </div>
     </footer>
   );
