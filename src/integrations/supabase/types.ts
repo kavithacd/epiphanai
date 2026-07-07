@@ -58,7 +58,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      increment_audit_run: { Args: { _limit: number }; Returns: number }
+      increment_monitor_run: { Args: { _limit: number }; Returns: number }
     }
     Enums: {
       app_plan: "free" | "audit" | "monitor" | "bundle"
