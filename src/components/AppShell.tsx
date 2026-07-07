@@ -1,11 +1,12 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { Activity, Inbox, History, Shield, Settings as Cog, Sparkles, Plus, TrendingUp, Radio, LogOut, Loader2, Lock } from "lucide-react";
+import { Activity, Inbox, History, Shield, Settings as Cog, Sparkles, Plus, TrendingUp, Radio, LogOut, Loader2, Lock, CreditCard } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useEpiphan } from "@/lib/epiphan-store";
 import { useAuthUser, useMyPlan } from "@/hooks/useMyPlan";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { UpgradeDialog } from "@/components/UpgradeDialog";
+import { OnboardingBanner } from "@/components/OnboardingBanner";
 import { BRAND } from "@/lib/branding";
 
 type NavReq = "audit" | "monitor" | null;
@@ -182,13 +183,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 )}
               </Link>
             </div>
-            <button
-              onClick={handleLogout}
-              title="Sign out"
-              className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-accent/40"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-            </button>
+            <div className="flex items-center gap-1">
+              <Link
+                to="/pricing"
+                title="Billing & plans"
+                className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-accent/40"
+              >
+                <CreditCard className="w-3.5 h-3.5" />
+              </Link>
+              <button
+                onClick={handleLogout}
+                title="Sign out"
+                className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-accent/40"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         </div>
       </aside>
@@ -220,7 +230,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </button>
           )}
         </header>
-        <div className="flex-1 min-w-0">{children}</div>
+        <div className="flex-1 min-w-0 flex flex-col">
+          <OnboardingBanner userId={user.id} />
+          <div className="flex-1 min-w-0">{children}</div>
+        </div>
       </main>
       <UpgradeDialog
         open={upgrade.open}
