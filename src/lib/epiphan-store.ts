@@ -844,41 +844,29 @@ export const useEpiphan = create<State>()(persist((set, get) => ({
   },
 
 }), {
-  name: "epiphan-state-v1",
-  version: 2,
-  migrate: (persisted: any, version) => {
-    if (!persisted) return persisted;
-    if (version < 2) {
-      // v2: ProbeQuery gained an `intent` field; reset to new defaults so
-      // legacy probe lists pick up the intent-grouped library.
-      persisted.probeQueries = DEFAULT_PROBE_QUERIES;
-      if (persisted.brandMonitorConfig && persisted.brandMonitorConfig.lastRefreshAt === undefined) {
-        persisted.brandMonitorConfig.lastRefreshAt = null;
-      }
-    }
-    return persisted;
-  },
+  // P1 refactor: server is the source of truth for audits/failures/fixes/history.
+  // localStorage only holds user-facing settings so we don't accumulate MBs of
+  // audit data for large catalogs. Audits hydrate from the DB via useAuditSync.
+  name: "epiphan-settings-v3",
+  version: 3,
+  storage: createJSONStorage(() => (typeof window !== "undefined" ? window.localStorage : (undefined as any))),
   partialize: (state) => ({
-    audits: state.audits
-      .filter((a) => a.status !== "running")
-      .map((a) => ({
-        ...a,
-        failures: a.failures.map((f) => ({
-          ...f,
-          status: f.status === "generating" ? ("eval_failed" as const) : f.status,
-          fix: truncateFix(f.fix),
-        })),
-      })),
-    activeAuditId: state.activeAuditId,
-    guardrailEvents: state.guardrailEvents,
-    fixHistory: state.fixHistory,
-    totalCostUsd: state.totalCostUsd,
     autoDeployEnabled: state.autoDeployEnabled,
     evalThresholds: state.evalThresholds,
     probeQueries: state.probeQueries,
     probeEngines: state.probeEngines,
     brandMonitorConfig: state.brandMonitorConfig,
+    integrations: state.integrations,
     currentUserId: state.currentUserId,
   }),
 }));
+
+// One-time cleanup: legacy v1/v2 stores can hold megabytes of audit data.
+// Remove them so nothing lingers on returning-user devices.
+if (typeof window !== "undefined") {
+  try {
+    window.localStorage.removeItem("epiphan-state-v1");
+  } catch { /* ignore */ }
+}
+
 
