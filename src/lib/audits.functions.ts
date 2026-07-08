@@ -82,8 +82,6 @@ export const hydrateAudit = createServerFn({ method: "GET" })
         detail: row.detail?.detail ?? row.title,
         isAutofixable: row.detail?.isAutofixable ?? false,
         requiresHuman: row.detail?.requiresHuman ?? false,
-        rootCause: row.detail?.rootCause ?? "",
-        remediation: row.detail?.remediation ?? "",
         missingFields: row.detail?.missingFields,
         regenerationCount: row.detail?.regenerationCount,
         fix: fixRow ? {
