@@ -14,6 +14,292 @@ export type Database = {
   }
   public: {
     Tables: {
+      audits: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          failure_count: number
+          id: string
+          pillar_scores: Json
+          root_url: string
+          sku_count: number
+          started_at: string | null
+          status: string
+          store_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          failure_count?: number
+          id?: string
+          pillar_scores?: Json
+          root_url: string
+          sku_count?: number
+          started_at?: string | null
+          status?: string
+          store_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          failure_count?: number
+          id?: string
+          pillar_scores?: Json
+          root_url?: string
+          sku_count?: number
+          started_at?: string | null
+          status?: string
+          store_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      catalog_items: {
+        Row: {
+          attempts: number
+          audit_id: string
+          created_at: string
+          error: string | null
+          id: string
+          last_audited_at: string | null
+          next_run_at: string
+          sku: string | null
+          status: string
+          title: string | null
+          updated_at: string
+          url: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          audit_id: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          last_audited_at?: string | null
+          next_run_at?: string
+          sku?: string | null
+          status?: string
+          title?: string | null
+          updated_at?: string
+          url: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          audit_id?: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          last_audited_at?: string | null
+          next_run_at?: string
+          sku?: string | null
+          status?: string
+          title?: string | null
+          updated_at?: string
+          url?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_items_audit_id_fkey"
+            columns: ["audit_id"]
+            isOneToOne: false
+            referencedRelation: "audits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      failures: {
+        Row: {
+          audit_id: string
+          catalog_item_id: string | null
+          created_at: string
+          detail: Json
+          detected_at: string
+          failure_code: string
+          id: string
+          pillar: string
+          severity: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          audit_id: string
+          catalog_item_id?: string | null
+          created_at?: string
+          detail?: Json
+          detected_at?: string
+          failure_code: string
+          id?: string
+          pillar: string
+          severity: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          audit_id?: string
+          catalog_item_id?: string | null
+          created_at?: string
+          detail?: Json
+          detected_at?: string
+          failure_code?: string
+          id?: string
+          pillar?: string
+          severity?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "failures_audit_id_fkey"
+            columns: ["audit_id"]
+            isOneToOne: false
+            referencedRelation: "audits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "failures_catalog_item_id_fkey"
+            columns: ["catalog_item_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fix_history: {
+        Row: {
+          audit_id: string
+          created_at: string
+          delta: number
+          detail: string | null
+          failure_id: string
+          id: string
+          pillar: string
+          pillar_delta: number
+          scores_after: Json
+          scores_before: Json
+          severity: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          audit_id: string
+          created_at?: string
+          delta?: number
+          detail?: string | null
+          failure_id: string
+          id?: string
+          pillar: string
+          pillar_delta?: number
+          scores_after?: Json
+          scores_before?: Json
+          severity: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          audit_id?: string
+          created_at?: string
+          delta?: number
+          detail?: string | null
+          failure_id?: string
+          id?: string
+          pillar?: string
+          pillar_delta?: number
+          scores_after?: Json
+          scores_before?: Json
+          severity?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fix_history_audit_id_fkey"
+            columns: ["audit_id"]
+            isOneToOne: false
+            referencedRelation: "audits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fix_history_failure_id_fkey"
+            columns: ["failure_id"]
+            isOneToOne: false
+            referencedRelation: "failures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fixes: {
+        Row: {
+          after_text: string | null
+          before_text: string | null
+          created_at: string
+          deployed_at: string | null
+          failure_id: string
+          generated_by: string
+          grounding_score: number
+          hallucination_score: number
+          id: string
+          reasoning: string | null
+          status: string
+          updated_at: string
+          user_feedback: string | null
+          user_id: string
+        }
+        Insert: {
+          after_text?: string | null
+          before_text?: string | null
+          created_at?: string
+          deployed_at?: string | null
+          failure_id: string
+          generated_by: string
+          grounding_score?: number
+          hallucination_score?: number
+          id?: string
+          reasoning?: string | null
+          status?: string
+          updated_at?: string
+          user_feedback?: string | null
+          user_id: string
+        }
+        Update: {
+          after_text?: string | null
+          before_text?: string | null
+          created_at?: string
+          deployed_at?: string | null
+          failure_id?: string
+          generated_by?: string
+          grounding_score?: number
+          hallucination_score?: number
+          id?: string
+          reasoning?: string | null
+          status?: string
+          updated_at?: string
+          user_feedback?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fixes_failure_id_fkey"
+            columns: ["failure_id"]
+            isOneToOne: false
+            referencedRelation: "failures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           audit_runs_used: number
