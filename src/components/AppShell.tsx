@@ -3,6 +3,7 @@ import { Activity, Inbox, History, Shield, Settings as Cog, Sparkles, Plus, Tren
 import { useEffect, useState } from "react";
 import { useEpiphan } from "@/lib/epiphan-store";
 import { useAuthUser, useMyPlan } from "@/hooks/useMyPlan";
+import { useAuditSync } from "@/hooks/useAuditSync";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { UpgradeDialog } from "@/components/UpgradeDialog";
@@ -32,6 +33,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const audits = useEpiphan((s) => s.audits);
   const resetForUser = useEpiphan((s) => s.resetForUser);
+  useAuditSync();
   const { user, loading } = useAuthUser();
   const { data: plan, limits } = useMyPlan();
   const [upgrade, setUpgrade] = useState<{ open: boolean; title: string; message: string }>({

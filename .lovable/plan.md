@@ -1,96 +1,87 @@
-## 1. Fixed already (this turn)
-Failure codes renumbered contiguous: `F1.5 → F1.4`, `F4.4 → F4.3`. Applied in `epiphan-data.ts` (catalog + healed-summary switches) and `dashboard.tsx` (2 references).
+# Scale to 100k-SKU catalogs
 
----
+Move the product off client-only zustand into a server-backed pipeline: catalog ingest → job queue → per-SKU pillar checks → server-persisted failures/fixes → real observability + eval framework. Delivered in 4 phases so each ships something usable.
 
-## 2. Searchable.com competitive audit — what they do that we don't
+## Phase 1 — Persistent audit storage (foundation)
 
-Ranked by impact on paying-customer conversion.
+Move the audit data model from `localStorage` into Postgres. No behavior change for the single-URL flow, but every write now lands server-side and is queryable.
 
-| # | They have | We don't | Priority |
-|---|-----------|----------|----------|
-| 1 | Audience toggle on pricing: **Brands vs Agencies** (different tiers, limits, white-label) | Single-audience pricing | High |
-| 2 | Pricing scales by **prompts tracked** AND **LLM engines selected** (checkboxes multiply price) | Fixed tiers | High (your ask) |
-| 3 | 9 engines: ChatGPT, Google AI Overviews, Perplexity, Copilot, DeepSeek, Google AI Mode, Gemini, Grok, Claude | We reference only "ChatGPT / probes" generically | High |
-| 4 | **/compare** page — head-to-head vs competitors (Profound, AthenaHQ, Peec, etc.) | None | High (your ask) |
-| 5 | **Free Visibility Report** lead-gen tool (enter domain → get scan) | None | High |
-| 6 | Feature pages: AEO Insights · LLM Analytics · Prompt Intelligence · Content Studio · Technical Optimisation · AI Shopping · MCP · Agent | Landing page only | Medium |
-| 7 | Customers / case studies (Momentum, 303, etc.) | None | Medium |
-| 8 | Resource Center (blog, guides, glossary) | None | Medium |
-| 9 | White-label reports, Looker Studio, MCP, API access | Not exposed | Medium (agencies) |
-| 10 | Annual billing → 20% off | Only monthly | Low |
-| 11 | Solutions pages: Brands / Agencies / Enterprise | None | Low |
-| 12 | Careers | — | **Skipped per your request** |
+**Tables** (all RLS-scoped to `auth.uid()`; `service_role` for workers):
 
-Their prompt-frequency (daily/weekly), multi-country/region tracking, and data retention tiers also gate plans.
+- `audits` — one row per audit run. Fields: `user_id`, `store_name`, `root_url`, `status` (pending/running/complete/failed), `sku_count`, `failure_count`, `pillar_scores jsonb`, `started_at`, `completed_at`.
+- `catalog_items` — one row per SKU. Fields: `user_id`, `audit_id`, `sku`, `url`, `title`, `status` (queued/running/done/failed/skipped), `last_audited_at`, `attempts`, `next_run_at`, `error`. Indexes on `(audit_id, status)`, `(user_id, sku)`, `(status, next_run_at)` for the worker pull.
+- `failures` — one row per detected failure. Fields: `user_id`, `audit_id`, `catalog_item_id`, `pillar`, `severity`, `failure_code`, `title`, `detail jsonb`, `status`, `detected_at`. Indexes on `(audit_id, pillar, severity)`, `(user_id, status, detected_at desc)`.
+- `fixes` — one row per generated fix. Fields: `user_id`, `failure_id`, `generated_by` (model), `before`, `after`, `hallucination_score`, `grounding_score`, `reasoning`, `user_feedback`, `status`, `deployed_at`.
+- `fix_history` — deploy events (before/after scores, delta) — same shape as today's zustand entry.
 
----
+**Server functions** (`createServerFn` + `requireSupabaseAuth`) in `src/lib/audits.functions.ts`:
+- `listAudits({ cursor, limit })`, `getAudit(id)`, `listFailures({ auditId, pillar?, severity?, cursor })`, `listFixes({ auditId, cursor })`, `submitFixFeedback({ fixId, verdict })`.
 
-## 3. Their published prices (for reference)
+**Migration path**: keep zustand as an in-memory cache hydrated from server queries. Delete `persist` so localStorage stops accumulating.
 
-**Brands** — Pro $125/mo · Scale $400/mo · Custom.
-**Agencies** — Launch $250/mo · Growth $400/mo · Enterprise $999+/mo · Custom.
-Annual −20%. Engines beyond 3 default (ChatGPT / GAIO / Perplexity) require Enterprise/Custom.
+## Phase 2 — Catalog ingest + job queue (the 100k-SKU pipe)
 
----
+**Tables**:
 
-## 4. Proposed Shine pricing (undercut ~15–25%, EUR)
+- `audit_jobs` — one per submitted catalog audit. Fields: `user_id`, `audit_id`, `source` (sitemap/shopify/csv/manual), `source_url`, `total_items`, `processed`, `failed`, `budget_cents`, `spent_cents`, `status`, `concurrency`.
+- `ingest_sources` — reusable catalog connections. Fields: `user_id`, `kind`, `config jsonb` (sitemap URL, Shopify shop+token ref, etc.), `last_synced_at`.
 
-Structure: **Audience toggle** (Brands ↔ Agencies) × **plan tier** × **engines picker**. Base plan includes N engines; each extra engine +€19/mo (annual: +€15). Falls back to current €0 free tier.
+**Server routes** (`src/routes/api/public/hooks/`):
+- `POST /api/public/hooks/ingest-catalog` — called from `pg_cron` or a UI "Start audit" action. Reads `ingest_sources`, streams sitemap.xml or paginates Shopify `/products.json`, bulk-inserts `catalog_items` in 1000-row chunks with `status='queued'`. Idempotent on `(audit_id, sku)`.
+- `POST /api/public/hooks/run-audit-batch` — pulls up to `N` (default 25) `catalog_items` where `status='queued' AND next_run_at <= now()`, locks them via `FOR UPDATE SKIP LOCKED`, runs the pillar checks per item, writes `failures` + `fixes`, updates counters on `audit_jobs`. On error: `attempts++`, `next_run_at = now() + backoff`.
+- `POST /api/public/hooks/rollup-audit` — when `processed + failed = total_items`, computes `pillar_scores`, marks the audit `complete`.
 
-### Brands
-| Plan | Price / mo | vs Searchable | Engines incl. | Prompts | Audits | SKUs | Projects |
-|------|-----------|---------------|---------------|---------|--------|------|----------|
-| Free | €0 | — | 1 | 25 | 2 | 25 | 1 |
-| Starter | **€39** | Pro $125 (−66%) | 3 | 200 | 200 | 100 | 3 |
-| Growth ★ | **€99** | Scale $400 (−73%) | 5 | 500 | 1,000 | 500 | 5 |
-| Scale | **€249** | (new mid-tier) | 7 | 1,250 | 3,000 | 2,000 | 10 |
-| Enterprise | Custom | Custom | 9 (all) | Custom | Custom | ∞ | ∞ |
+**pg_cron** (SQL-only, in `pg_net`): every minute call `run-audit-batch`; every 5 minutes call `rollup-audit`. Auth via `apikey` header = anon key.
 
-### Agencies (multi-brand + white-label baked in)
-| Plan | Price / mo | vs Searchable | Engines incl. | Prompts | Audits | Client projects |
-|------|-----------|---------------|---------------|---------|--------|-----------------|
-| Launch | **€199** | $250 (−20%) | 3 | 200 | 200 | 5 |
-| Growth ★ | **€329** | $400 (−18%) | 5 | 500 | 1,000 | 10 |
-| Enterprise | **€799** | $999 (−20%) | 7 | 1,250 | 3,000 | ∞ |
-| Custom | Custom | Custom | 9 (all) | Custom | Custom | ∞ |
+**UI**: replace the single-URL Start page with a "New audit" form offering (a) paste sitemap URL, (b) upload CSV of URLs, (c) connect Shopify (deferred stub). Show live progress bar hitting `getAudit(id)` on a 3s poll.
 
-**Engine picker economics:** deselecting an included engine credits −€10/mo (annual −€8); adding above the base is +€19/mo. Free plan is locked to 1 engine of choice.
+**Quota**: `audit_runs_used` becomes SKU-cost accounting on `audit_jobs.spent_cents`; per-tier `sku_cap` and `concurrency` on `profiles` / plan config.
 
-**Annual toggle:** −20% across all paid tiers.
+## Phase 3 — Observability at scale
 
-**Why these numbers work:** our unit cost is dominated by AI Gateway inference per probe. At 200 prompts × 3 engines × daily = 18,000 answers/mo — call it ~€6–10 pass-through at current gateway rates. Even at Starter €39/mo we retain a 4–6× gross margin. Growth (500 prompts × 5 engines × daily = 75,000 answers ≈ €25–35 cost) still leaves €65+ margin on €99. Scale/Enterprise cover heavier competitor sets and stay comfortably above cost.
+**Tables** (append-only, partitioned by day via native Postgres range partitioning; workers use `service_role`):
 
-**Please confirm or tweak these numbers before I wire them in.**
+- `ai_traces` — `id`, `user_id`, `audit_id`, `catalog_item_id`, `model`, `workflow`, `pillar`, `prompt_hash`, `tokens_in`, `tokens_out`, `duration_ms`, `cost_usd`, `status`, `error`, `created_at`. Partitioned daily; 90-day retention job.
+- `guardrail_events` — same idea, one row per hard-stop hit.
+- `eval_daily_rollup` — materialized aggregations: `day`, `model`, `pillar`, `runs`, `pass`, `fail`, `p50_ms`, `p95_ms`, `p99_ms`, `avg_hallucination`, `avg_grounding`, `total_cost_usd`.
 
----
+**Sampling**: writer helper `logTrace()` writes 100% of failures + a stratified sample (default 5%, configurable per tier) of successes. Judge scores always written for sampled + all failures.
 
-## 5. Build plan (once prices are confirmed)
+**Rollup**: `pg_cron` hourly → SQL-only `INSERT ... ON CONFLICT DO UPDATE` into `eval_daily_rollup` from the last hour of `ai_traces`. `/admin` reads only rollups + last 200 raw traces — not the whole table.
 
-### Phase A — Pricing overhaul (delivers your headline ask)
-1. Extend `src/lib/plan.ts`: add `AUDIENCE` (`"brand" | "agency"`), `ENGINES` catalog (9 providers with slug/name/logo), tier tables above, engine add-on price, annual multiplier.
-2. Rewrite `src/routes/pricing.tsx`:
-   - Audience toggle (Brands / Agencies)
-   - Billing toggle (Monthly / Annual −20%)
-   - Engine multi-select with live price recompute per tier card
-   - Prompt/audit/project rows per tier
-   - Comparison table matching Searchable's layout
-3. Sync `PRICING_TIERS` consumers (`useMyPlan`, `UpgradeDialog`, `settings.tsx`) to the new shape without breaking existing free/enterprise gates.
+**Admin UI changes**: paginated trace table (cursor on `created_at`), time-window filter (1h / 24h / 7d / 30d), per-model + per-pillar breakdown chart driven by `eval_daily_rollup`. Cost tracker reads `sum(cost_usd)` from the rollup, not zustand.
 
-### Phase B — Compare page
-New route `src/routes/compare.tsx` with a matrix of Shine vs Searchable / Profound / AthenaHQ / Peec across ~12 capability rows (multi-engine, EU billing, agency white-label, auto-heal on-page, price/mo at 500 prompts, etc.). Also linked from the top nav.
+## Phase 4 — Eval framework (regression + drift)
 
-### Phase C — Free Visibility Report lead magnet
-Public route `/visibility-report` — enter domain, get a mock preview (uses existing `epiphan-data.ts` scoring), gated email capture to unlock full PDF export. Feeds sign-up funnel.
+**Tables**:
 
-### Phase D — Feature pages + customers stubs (medium priority)
-Skeleton routes for `/features/{aeo,llm-analytics,prompts,content,technical,shopping,mcp,agent}` and `/customers`. Content-light but SEO-complete via `seoMeta`.
+- `eval_datasets` — named golden sets. Fields: `user_id` (nullable = system-wide), `name`, `description`, `pillar`.
+- `eval_cases` — pinned inputs. Fields: `dataset_id`, `input jsonb`, `expected jsonb`, `weight`.
+- `eval_experiments` — one row per named run. Fields: `dataset_id`, `model`, `prompt_version`, `started_at`, `pass_rate`, `avg_hallucination`, `avg_grounding`, `p95_ms`.
+- `eval_case_results` — per-case scores in an experiment.
 
-Careers **out of scope** per your instruction.
+**Server**:
+- `runExperiment({ datasetId, model, promptVersion })` — replays every case, writes results, computes summary.
+- `POST /api/public/hooks/nightly-eval` — pg_cron 03:00 UTC, runs the "default" dataset against the current pinned models, alerts (row in `eval_alerts` + toast on `/admin`) when pass-rate drops > 5% vs. the last 7-day average.
 
----
+**Admin UI**: `/admin/evals` — dataset picker, experiment comparison (side-by-side score deltas), per-case drill-down. Drift banner on `/admin` header when an alert is open.
 
-## 6. Decisions needed from you
-1. **Approve or edit the price table** in §4. Reply with any tier changes.
-2. Ship Phase A only, or A+B, or all four (A–D)?
-3. Confirm the 9-engine list matches what we can actually probe (any we should drop for launch?).
+## Phased rollout
+
+- **P1** — audits/failures/fixes tables + server fns, dashboard/review/history read from server, zustand becomes a hydration cache. Ships 100% feature parity for the current single-URL flow. **~1 day.**
+- **P2** — audit_jobs/catalog_items tables, ingest + batch worker routes, pg_cron, new "New audit" UI with progress + CSV/sitemap ingest. Product now handles 100k SKUs (throughput bound only by worker concurrency + LLM quota). **~1.5 days.**
+- **P3** — ai_traces/guardrail_events partitioning, sampling helper, hourly rollup, refactored `/admin`. **~1 day.**
+- **P4** — eval_datasets/experiments, nightly regression cron, `/admin/evals`, drift alerts. **~1 day.**
+
+## Technical notes
+
+- `catalog_items.status` transitions: `queued → running → done | failed → (retry) queued`. `FOR UPDATE SKIP LOCKED` prevents double-processing across concurrent workers.
+- All `/api/public/hooks/*` routes authenticate via `apikey: <anon key>` header (pg_cron pattern). No custom shared secret.
+- Worker route uses `supabaseAdmin` loaded inside the handler (never at module scope of a client-reachable file).
+- Trace/failure/fix tables use daily range partitioning for cheap 90-day retention drops; `pg_cron` creates tomorrow's partition each night.
+- 100% of tables get `GRANT SELECT/INSERT/UPDATE/DELETE ON ... TO authenticated`, `GRANT ALL ... TO service_role`, RLS on, policies scoped to `auth.uid()`. No `anon` grants.
+- Zustand keeps only ephemeral UI state (active audit id, filters). Persist middleware removed.
+- Existing routes (`/dashboard`, `/review`, `/history`, `/impact`, `/monitoring`, `/admin`) migrate to server-fn reads via TanStack Query loaders — the current shape is already the canonical `ensureQueryData` / `useSuspenseQuery` pattern.
+- Cost per SKU capped per plan tier; `audit_jobs` refuses to start (or auto-pauses) when `spent_cents > budget_cents`.
+
+Reply with **"build P1"** (or "build P1 and P2", etc.) to start; each phase is safe to ship independently.
