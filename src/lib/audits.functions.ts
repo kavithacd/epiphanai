@@ -177,8 +177,6 @@ export const persistAudit = createServerFn({ method: "POST" })
           detail: f.detail,
           isAutofixable: f.isAutofixable,
           requiresHuman: f.requiresHuman,
-          rootCause: f.rootCause,
-          remediation: f.remediation,
           missingFields: f.missingFields,
           regenerationCount: f.regenerationCount,
         },
