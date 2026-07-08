@@ -33,6 +33,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const audits = useEpiphan((s) => s.audits);
   const resetForUser = useEpiphan((s) => s.resetForUser);
+  useAuditSync();
   const { user, loading } = useAuthUser();
   const { data: plan, limits } = useMyPlan();
   const [upgrade, setUpgrade] = useState<{ open: boolean; title: string; message: string }>({
