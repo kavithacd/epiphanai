@@ -3,6 +3,7 @@ import { Activity, Inbox, History, Shield, Settings as Cog, Sparkles, Plus, Tren
 import { useEffect, useState } from "react";
 import { useEpiphan } from "@/lib/epiphan-store";
 import { useAuthUser, useMyPlan } from "@/hooks/useMyPlan";
+import { useAuditSync } from "@/hooks/useAuditSync";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { UpgradeDialog } from "@/components/UpgradeDialog";
