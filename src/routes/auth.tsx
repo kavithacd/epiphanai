@@ -7,7 +7,7 @@ import { lovable } from "@/integrations/lovable/index";
 import { seoMeta } from "@/lib/branding";
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (s: Record<string, unknown>) => ({
+  validateSearch: (s: Record<string, unknown>): { mode?: "signup" | "signin" } => ({
     mode: s.mode === "signup" ? "signup" : "signin",
   }),
   head: () => ({ meta: seoMeta("Sign in", "Sign in to your account.") }),
